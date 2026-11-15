@@ -30,6 +30,9 @@ test('série de jours notés', () => {
   assert.equal(serieJours(r, '2026-11-15'), 3);
   assert.equal(serieJours([...r, { date: '2026-11-15' }], '2026-11-15'), 4);
   assert.equal(serieJours([{ date: '2026-11-10' }], '2026-11-15'), 0);
+  // Une boisson seule ne compte pas comme un jour noté.
+  assert.equal(serieJours([...r, { date: '2026-11-15', moment: 'boisson' }], '2026-11-15'), 3);
+  assert.equal(serieJours([{ date: '2026-11-14', moment: 'boisson' }], '2026-11-15'), 0);
 });
 
 test('bilan : perte lente mais repas au-dessus de l’objectif → on ne baisse pas', () => {

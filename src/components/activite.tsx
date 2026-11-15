@@ -1,7 +1,7 @@
 // Carte « Activité » : pas du jour lus dans Health Connect (téléphone + montre connectée).
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, View } from 'react-native';
+import { Alert, AppState, Platform, Pressable, View } from 'react-native';
 
 import { Barre, Bouton, C, Carte, Texte } from '@/components/ui';
 import { connecterSante, etatSante, installerHealthConnect, lirePas, lirePoids, ouvrirReglagesSante, type EtatSante } from '@/lib/sante';
@@ -16,8 +16,18 @@ export function CarteActivite({ jour }: { jour: string }) {
   const [etat, setEtat] = useState<EtatSante | null>(null);
   const [chargement, setChargement] = useState(false);
 
+  // Revérifié au retour dans l'appli : après l'installation de Health Connect depuis le Play Store,
+  // ou pour actualiser les pas quand on revient sur l'appli (useFocusEffect ne se déclenche pas dans ce cas).
+  const auRetour = useRef(() => {});
   useEffect(() => {
-    etatSante().then(setEtat);
+    const maj = () => etatSante().then(setEtat);
+    maj();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s !== 'active') return;
+      maj();
+      auRetour.current();
+    });
+    return () => sub.remove();
   }, []);
 
   const synchroniser = useCallback(async () => {
@@ -33,6 +43,9 @@ export function CarteActivite({ jour }: { jour: string }) {
   // Les fonctions du store changent à chaque mise à jour : on passe par une ref pour ne pas relancer la synchro en boucle.
   const synchroRef = useRef(synchroniser);
   synchroRef.current = synchroniser;
+  auRetour.current = () => {
+    if (santeConnectee && etat === 'pret') synchroniser();
+  };
   useFocusEffect(
     useCallback(() => {
       if (santeConnectee && etat === 'pret') synchroRef.current();

@@ -56,9 +56,12 @@ export function kcalParJour(repas: { date: string; kcal: number }[], finISO: str
   return jours.map((date) => ({ date, kcal: Math.round(repas.filter((r) => r.date === date).reduce((s, r) => s + r.kcal, 0)) }));
 }
 
+/** Une boisson seule (café sucré, soda…) ne suffit pas pour dire que la journée a été notée. */
+const estRepasNote = (r: { moment?: string }) => r.moment !== 'boisson';
+
 /** Nombre de jours d'affilée avec au moins un repas noté (jusqu'à aujourd'hui, ou hier si rien encore aujourd'hui). */
-export function serieJours(repas: { date: string }[], aujourdhuiISO: string): number {
-  const jours = new Set(repas.map((r) => r.date));
+export function serieJours(repas: { date: string; moment?: string }[], aujourdhuiISO: string): number {
+  const jours = new Set(repas.filter(estRepasNote).map((r) => r.date));
   let d = jours.has(aujourdhuiISO) ? aujourdhuiISO : decalerJour(aujourdhuiISO, -1);
   let n = 0;
   while (jours.has(d)) {
@@ -97,12 +100,13 @@ export interface Bilan {
  */
 export function bilanSemaine(
   pesees: { date: string; poidsKg: number }[],
-  repas: { date: string; kcal: number }[],
+  repas: { date: string; kcal: number; moment?: string }[],
   finISO: string,
   kcalActuel: number,
   ajuster: (pertes: [number, number]) => number,
 ): Bilan {
-  const jours = kcalParJour(repas, finISO, 7).filter((j) => j.kcal > 0);
+  const notes = new Set(repas.filter(estRepasNote).map((r) => r.date));
+  const jours = kcalParJour(repas, finISO, 7).filter((j) => j.kcal > 0 && notes.has(j.date));
   const moyenneKcal = jours.length ? Math.round(jours.reduce((s, j) => s + j.kcal, 0) / jours.length) : null;
   const pertes = pertesHebdo(pesees, finISO);
   const base = { date: finISO, perteKg: pertes ? pertes[1] : null, moyenneKcal, joursNotes: jours.length, kcalActuel };
