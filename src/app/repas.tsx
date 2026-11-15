@@ -3,7 +3,9 @@ import { Alert, Pressable, View } from 'react-native';
 
 import { EstimationRepas } from '@/components/estimation-repas';
 import { Bouton, C, Carte, Champ, Choix, Ecran, Segments, Texte } from '@/components/ui';
+import { objectifMacros } from '@/lib/nutrition';
 import { aujourdhui, useStore, type Repas } from '@/lib/store';
+import { decalerJour, kcalParJour } from '@/lib/suivi';
 
 const MOMENTS: { valeur: Repas['moment']; texte: string }[] = [
   { valeur: 'petit-dej', texte: 'Petit-déj' },
@@ -24,7 +26,7 @@ type Mode = 'photo' | 'texte' | 'manuel';
 const n = (s: string) => Math.max(0, Number(s.replace(',', '.')) || 0);
 
 export default function RepasScreen() {
-  const { repas, ajouterRepas, supprimerRepas } = useStore();
+  const { profil, repas, ajouterRepas, supprimerRepas } = useStore();
   const [moment, setMoment] = useState<Repas['moment']>(momentParDefaut());
   const [mode, setMode] = useState<Mode>('photo');
   const [nom, setNom] = useState('');
@@ -33,7 +35,17 @@ export default function RepasScreen() {
   const [l, setL] = useState('');
   const [g, setG] = useState('');
 
-  const jour = aujourdhui();
+  const auj = aujourdhui();
+  const [choisi, setChoisi] = useState<string | null>(null);
+  const jour = choisi ?? auj;
+  const estAujourdhui = jour === auj;
+  const objectifKcal = profil ? objectifMacros(profil).kcal : 2000;
+  const semaine = kcalParJour(repas, auj, 7);
+  const libelleJour = estAujourdhui
+    ? "aujourd'hui"
+    : jour === decalerJour(auj, -1)
+      ? 'hier'
+      : new Date(`${jour}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const duJour = repas.filter((r) => r.date === jour);
   const totalJour = duJour.reduce((s, r) => s + r.kcal, 0);
 
@@ -51,7 +63,42 @@ export default function RepasScreen() {
   };
 
   return (
-    <Ecran titre="Repas" sousTitre={`${Math.round(totalJour)} kcal aujourd'hui`}>
+    <Ecran titre="Repas" sousTitre={`${Math.round(totalJour)} / ${objectifKcal} kcal ${libelleJour}`}>
+      <Carte>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Pressable hitSlop={10} onPress={() => setChoisi(decalerJour(jour, -1))}>
+            <Texte type="gras" couleur={C.accent}>
+              ‹ Veille
+            </Texte>
+          </Pressable>
+          <Texte type="gras">{libelleJour.charAt(0).toUpperCase() + libelleJour.slice(1)}</Texte>
+          <Pressable hitSlop={10} disabled={estAujourdhui} onPress={() => setChoisi(decalerJour(jour, 1) >= auj ? null : decalerJour(jour, 1))}>
+            <Texte type="gras" couleur={estAujourdhui ? C.backgroundSelected : C.accent}>
+              Lendemain ›
+            </Texte>
+          </Pressable>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 74 }}>
+          {semaine.map((d) => {
+            const ratio = Math.min(d.kcal / (objectifKcal * 1.3), 1);
+            const selection = d.date === jour;
+            return (
+              <Pressable key={d.date} onPress={() => setChoisi(d.date === auj ? null : d.date)} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+                <View style={{ width: '100%', height: 50, justifyContent: 'flex-end', backgroundColor: C.backgroundSelected, borderRadius: 6, overflow: 'hidden', borderWidth: selection ? 2 : 0, borderColor: C.text }}>
+                  <View style={{ height: `${ratio * 100}%`, backgroundColor: d.kcal > objectifKcal ? C.danger : C.accent }} />
+                </View>
+                <Texte type="petit" couleur={selection ? C.text : C.textSecondary}>
+                  {new Date(`${d.date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'narrow' }).toUpperCase()}
+                </Texte>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Texte type="petit">
+          Tes 7 derniers jours (vert : dans l’objectif, rouge : au-dessus). Touche un jour pour voir ses repas{estAujourdhui ? '' : ' ou en ajouter un oublié'}.
+        </Texte>
+        {!estAujourdhui && <Bouton titre="Revenir à aujourd'hui" secondaire onPress={() => setChoisi(null)} />}
+      </Carte>
       <Choix valeur={moment} onChange={setMoment} options={MOMENTS} />
       <Segments
         valeur={mode}
@@ -113,6 +160,7 @@ export default function RepasScreen() {
           </Carte>
         );
       })}
+      {duJour.length === 0 && !estAujourdhui && <Texte type="petit">Aucun repas noté ce jour-là.</Texte>}
       {duJour.length > 0 && <Texte type="petit">Appui long sur un repas pour le supprimer.</Texte>}
     </Ecran>
   );

@@ -2,9 +2,11 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
+import { CourbePoids } from '@/components/courbe-poids';
 import { Anneau, Barre, Bouton, C, Carte, Champ, Ecran, Texte } from '@/components/ui';
 import { moyenne7Jours, objectifMacros } from '@/lib/nutrition';
 import { aujourdhui, useStore } from '@/lib/store';
+import { semainesJusquaCible, vitesseHebdo } from '@/lib/suivi';
 import { genererProgramme } from '@/lib/training';
 
 const CONSEILS = [
@@ -51,6 +53,8 @@ export default function AujourdhuiScreen() {
   const restant = Math.round(objectif.kcal - total.kcal);
   const moyenne = moyenne7Jours(pesees, jour);
   const perdu = pesees.length > 0 ? pesees[0].poidsKg - (moyenne ?? profil.poidsKg) : 0;
+  const vitesse = vitesseHebdo(pesees, jour);
+  const semainesRestantes = semainesJusquaCible(moyenne ?? profil.poidsKg, profil.poidsCibleKg, vitesse);
   const conseil = CONSEILS[new Date().getDate() % CONSEILS.length];
 
   const semaineNum = Math.min(12, Math.max(1, Math.floor((Date.now() - new Date(profil.debutProgramme).getTime()) / (7 * 864e5)) + 1));
@@ -135,6 +139,17 @@ export default function AujourdhuiScreen() {
           </View>
           <Bouton titre="OK" secondaire onPress={peser} />
         </View>
+        {vitesse !== null && (
+          <Texte type="petit" couleur={vitesse < 0 ? C.accent : C.text}>
+            {vitesse < -0.05
+              ? `Tu perds environ ${(-vitesse).toFixed(1).replace('.', ',')} kg par semaine.`
+              : vitesse > 0.05
+                ? `Ton poids monte d’environ ${vitesse.toFixed(1).replace('.', ',')} kg par semaine ces 4 dernières semaines.`
+                : 'Ton poids est stable ces 4 dernières semaines.'}
+            {semainesRestantes ? ` À ce rythme, objectif atteint dans environ ${semainesRestantes} semaine${semainesRestantes > 1 ? 's' : ''}.` : ''}
+          </Texte>
+        )}
+        <CourbePoids pesees={pesees} cible={profil.poidsCibleKg} aujourdhui={jour} />
       </Carte>
 
       <Carte accent={C.bordure}>
