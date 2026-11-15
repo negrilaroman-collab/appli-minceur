@@ -1,56 +1,43 @@
-# Welcome to your Expo app 👋
+# Appli Minceur
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Appli mobile (Android d'abord) pour perdre du poids : calcul des besoins en kcal et macros, journal des repas, programme de sport sur 12 semaines et suivi du poids.
 
-## Get started
+Fiche complète du projet : https://claude.ai/artifact/A64jxs65iAFk4ZtqKpb1KS
 
-1. Install dependencies
+## Ce qui marche déjà (étape 1, en cours)
 
+- **Profil** : calcul du métabolisme de base (Mifflin-St Jeor), de la dépense totale, de l'objectif kcal (déficit 15 à 25 %, plafonné à 750 kcal, jamais sous 1 500 kcal pour un homme / 1 200 pour une femme) et des macros.
+- **Aujourd'hui** : kcal restantes, barres protéines / lipides / glucides, pesée du jour et moyenne sur 7 jours.
+- **Repas** : ajout manuel d'un aliment avec ses kcal et macros, liste par moment de la journée.
+- **Sport** : programme de 12 semaines généré selon le niveau, le lieu et le nombre de jours (semaines 5 et 9 allégées).
+
+À venir : photo de l'assiette analysée par l'IA avec questions en cas de doute, base nutritionnelle CIQUAL, bilan hebdomadaire automatique.
+
+## Lancer l'appli sur ton téléphone Android
+
+1. Installe [Node.js](https://nodejs.org) (version 20 ou plus) sur ton ordinateur.
+2. Installe l'appli **Expo Go** depuis le Play Store sur ton téléphone.
+3. Dans un terminal :
    ```bash
+   git clone https://github.com/negrilaroman-collab/appli-minceur
+   cd appli-minceur
    npm install
-   ```
-
-2. Start the app
-
-   ```bash
    npx expo start
    ```
+4. Scanne le QR code affiché avec Expo Go (téléphone et ordinateur sur le même Wi-Fi).
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Commandes utiles
 
 ```bash
-npm run reset-project
+npm test          # tests des calculs (kcal, macros, programme)
+npm run typecheck # vérification TypeScript
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+## Structure
 
-### Other setup steps
+- `src/lib/nutrition.ts` : calculs diététiques
+- `src/lib/training.ts` : génération du programme de sport
+- `src/lib/store.tsx` : données sauvegardées sur le téléphone
+- `src/app/` : écrans (Aujourd'hui, Repas, Sport, Profil)
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Conseils généraux uniquement : l'appli ne remplace pas un avis médical.

@@ -22,10 +22,16 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+            <TabButton>Aujourd'hui</TabButton>
           </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
+          <TabTrigger name="repas" href="/repas" asChild>
+            <TabButton>Repas</TabButton>
+          </TabTrigger>
+          <TabTrigger name="sport" href="/sport" asChild>
+            <TabButton>Sport</TabButton>
+          </TabTrigger>
+          <TabTrigger name="profil" href="/profil" asChild>
+            <TabButton>Profil</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -35,6 +41,7 @@ export default function AppTabs() {
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   return (
+    // @ts-expect-error conflit de types ref du modèle Expo (web uniquement)
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
