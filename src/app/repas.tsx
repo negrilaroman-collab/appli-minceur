@@ -42,7 +42,7 @@ export default function RepasScreen() {
       Alert.alert('Repas incomplet', 'Indique au moins un nom et les kcal.');
       return;
     }
-    ajouterRepas({ date: jour, moment, nom: nom.trim(), kcal: n(kcal), proteinesG: n(p), lipidesG: n(l), glucidesG: n(g) });
+    ajouterRepas({ date: jour, moment, nom: nom.trim(), kcal: Math.round(n(kcal)), proteinesG: Math.round(n(p)), lipidesG: Math.round(n(l)), glucidesG: Math.round(n(g)) });
     setNom('');
     setKcal('');
     setP('');
@@ -74,10 +74,10 @@ export default function RepasScreen() {
               <Champ libelle="PROT. (G)" keyboardType="number-pad" value={p} onChangeText={setP} />
             </View>
             <View style={{ flex: 1 }}>
-              <Champ libelle="LIP. (G)" keyboardType="number-pad" value={l} onChangeText={setL} />
+              <Champ libelle="GLUC. (G)" keyboardType="number-pad" value={g} onChangeText={setG} />
             </View>
             <View style={{ flex: 1 }}>
-              <Champ libelle="GLUC. (G)" keyboardType="number-pad" value={g} onChangeText={setG} />
+              <Champ libelle="LIP. (G)" keyboardType="number-pad" value={l} onChangeText={setL} />
             </View>
           </View>
           <Bouton titre="Ajouter" onPress={ajouterManuel} />

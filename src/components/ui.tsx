@@ -142,9 +142,9 @@ export function Barre({ libelle, valeur, cible, unite, couleur = C.accent }: { l
   return (
     <View style={{ gap: 6, flex: 1 }}>
       <Text style={styles.label}>{libelle.toUpperCase()}</Text>
-      <Text style={styles.chiffre}>
+      <Text style={styles.chiffre} numberOfLines={1} adjustsFontSizeToFit>
         {Math.round(valeur)}
-        <Text style={styles.petit}> / {cible} {unite}</Text>
+        <Text style={styles.petit}>{` / ${cible} ${unite}`}</Text>
       </Text>
       <View style={styles.piste}>
         <View style={[styles.remplissage, { width: `${ratio * 100}%`, backgroundColor: depasse ? C.danger : couleur }]} />

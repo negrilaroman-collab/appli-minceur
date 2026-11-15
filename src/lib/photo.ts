@@ -5,8 +5,16 @@ import * as ImagePicker from 'expo-image-picker';
 export type ResultatImage = { uri: string; base64: string } | { erreur: string } | null;
 
 export async function choisirImage(camera: boolean): Promise<ResultatImage> {
-  const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!perm.granted) return { erreur: camera ? "Autorise l'accès à l'appareil photo." : "Autorise l'accès aux photos." };
+  try {
+    return await choisir(camera);
+  } catch {
+    return { erreur: camera ? "Impossible d'ouvrir l'appareil photo." : "Impossible d'ouvrir la photo." };
+  }
+}
+
+async function choisir(camera: boolean): Promise<ResultatImage> {
+  // La galerie passe par le sélecteur de photos du système : pas besoin de permission.
+  if (camera && !(await ImagePicker.requestCameraPermissionsAsync()).granted) return { erreur: "Autorise l'accès à l'appareil photo." };
   const res = camera
     ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
     : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });

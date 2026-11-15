@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 // Estimation d'un repas par l'IA, à partir d'une photo ou d'une description :
 // analyse → questions si doute → correction des portions → validation.
 import { useState } from 'react';
@@ -139,6 +140,9 @@ export function EstimationRepas({ mode, onValider }: { mode: 'photo' | 'texte'; 
       {etape.nom === 'erreur' && (
         <>
           <Texte couleur={C.danger}>{etape.message}</Texte>
+          {/clé/i.test(etape.message) && (
+            <Bouton titre="Aller au Profil pour ajouter la clé" onPress={() => router.navigate({ pathname: '/profil', params: { cle: '1' } })} />
+          )}
           <Bouton titre="Recommencer" secondaire onPress={reinitialiser} />
         </>
       )}
@@ -146,7 +150,7 @@ export function EstimationRepas({ mode, onValider }: { mode: 'photo' | 'texte'; 
       {etape.nom === 'questions' && (
         <>
           <Total analyse={etape.analyse} />
-          <Texte type="gras">J'ai un doute, aide-moi à être plus précis :</Texte>
+          <Texte type="gras">J'ai un doute, aide-moi à être plus précis :</Texte>
           {etape.analyse.questions.map((q) => (
             <View key={q.id} style={{ gap: 8 }}>
               <Texte>{q.question}</Texte>

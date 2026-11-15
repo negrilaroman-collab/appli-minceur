@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { Bouton, C, Carte, Ecran, Texte } from '@/components/ui';
-import { useStore } from '@/lib/store';
+import { aujourdhui, useStore } from '@/lib/store';
 import { genererProgramme } from '@/lib/training';
 
 function semaineCourante(debutISO: string): number {
@@ -12,7 +12,7 @@ function semaineCourante(debutISO: string): number {
 }
 
 export default function SportScreen() {
-  const { profil } = useStore();
+  const { profil, enregistrerProfil } = useStore();
   const programme = useMemo(
     () => (profil ? genererProgramme({ niveau: profil.niveauSport, lieu: profil.lieuSport, joursParSemaine: profil.joursSport }) : []),
     [profil],
@@ -31,6 +31,11 @@ export default function SportScreen() {
   }
 
   const actuelle = semaineCourante(profil.debutProgramme);
+  const fini = Date.now() - new Date(profil.debutProgramme).getTime() >= 12 * 7 * 24 * 3600 * 1000;
+  const recommencer = () => {
+    enregistrerProfil({ ...profil, debutProgramme: aujourdhui() });
+    setChoisie(null);
+  };
   const num = choisie ?? actuelle;
   const semaine = programme[num - 1];
 
@@ -57,6 +62,14 @@ export default function SportScreen() {
           <Bouton titre="Suiv. ›" secondaire onPress={() => setChoisie(Math.min(12, num + 1))} />
         </View>
       </View>
+
+      {fini && (
+        <Carte accent={C.accent}>
+          <Texte type="gras">Bravo, tu as terminé les 12 semaines ! 🎉</Texte>
+          <Texte type="petit">Recommence un cycle : pense à monter d'un niveau dans le Profil si c'était devenu facile.</Texte>
+          <Bouton titre="Recommencer un cycle de 12 semaines" onPress={recommencer} />
+        </Carte>
+      )}
 
       {semaine.seances.map((s, i) => (
         <Carte key={i} accent={s.cardio ? C.bordure : undefined}>

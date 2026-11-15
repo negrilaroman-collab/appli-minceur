@@ -48,7 +48,19 @@ export async function demanderCoach(conversation: MessageCoach[], contexte: Cont
       ? { role: 'model', parts: [{ text: m.texte }] }
       : premierTourGemini(i === avecPhoto ? m.imageBase64 ?? null : null, m.texte || 'Que me conseilles-tu avec ça ?'),
   );
-  return discuterGemini(await cle(), systemeCoach(contexte), historique);
+  return discuterGemini(await cle(), systemeCoach(contexte), nettoyerHistorique(historique));
 }
 
 export { testerCleGemini } from './gemini';
+
+/** Gemini attend des tours qui alternent et commencent par l'utilisateur : on fusionne et on coupe si besoin. */
+export function nettoyerHistorique(h: TourGemini[]): TourGemini[] {
+  const fusion: TourGemini[] = [];
+  for (const t of h) {
+    const dernier = fusion[fusion.length - 1];
+    if (dernier && dernier.role === t.role) fusion[fusion.length - 1] = { role: t.role, parts: [...dernier.parts, ...t.parts] };
+    else fusion.push(t);
+  }
+  while (fusion.length && fusion[0].role !== 'user') fusion.shift();
+  return fusion;
+}

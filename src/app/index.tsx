@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { Anneau, Barre, Bouton, C, Carte, Champ, Ecran, Texte } from '@/components/ui';
 import { moyenne7Jours, objectifMacros } from '@/lib/nutrition';
@@ -61,7 +61,7 @@ export default function AujourdhuiScreen() {
     if (v >= 35 && v <= 300) {
       ajouterPesee({ date: jour, poidsKg: v });
       setPoids('');
-    }
+    } else Alert.alert('Pesée', 'Entre ton poids en kg, par exemple 88,5.');
   };
 
   return (
@@ -119,12 +119,12 @@ export default function AujourdhuiScreen() {
         <Texte type="label">POIDS</Texte>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <View>
-            <Texte type="chiffre">{moyenne ? moyenne.toFixed(1) : profil.poidsKg} kg</Texte>
+            <Texte type="chiffre">{moyenne ? moyenne.toFixed(1).replace('.', ',') : profil.poidsKg} kg</Texte>
             <Texte type="petit">moyenne 7 jours</Texte>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Texte type="chiffre" couleur={perdu > 0 ? C.accent : C.text}>
-              {perdu > 0 ? `−${perdu.toFixed(1)}` : '0'} kg
+              {perdu > 0 ? `−${perdu.toFixed(1).replace('.', ',')}` : '0'} kg
             </Texte>
             <Texte type="petit">objectif {profil.poidsCibleKg} kg</Texte>
           </View>

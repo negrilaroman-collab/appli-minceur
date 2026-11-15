@@ -102,8 +102,12 @@ export default function CoachScreen() {
       setMessages(finale);
       sauver(finale);
     } catch (e) {
-      const msg = e instanceof ErreurAnalyse ? e.message : 'Erreur inattendue, réessaie.';
-      setMessages([...liste, { id: `${Date.now()}-e`, role: 'coach', texte: msg, erreur: true }]);
+      const msg = e instanceof ErreurAnalyse ? e.message : 'Erreur inattendue.';
+      // On retire le message qui n'a pas eu de réponse et on le remet dans la zone de texte.
+      setTexte(contenu ? '' : t);
+      if (nouveau.imageBase64 && nouveau.imageUri) setImage({ uri: nouveau.imageUri, base64: nouveau.imageBase64 });
+      const aide = /clé/i.test(msg) ? '' : contenu ? '\n\nTouche à nouveau la suggestion pour réessayer.' : '\n\nTon message est remis en bas : touche ➤ pour réessayer.';
+      setMessages([...liste.slice(0, -1), { id: `${Date.now()}-e`, role: 'coach', texte: msg + aide, erreur: true }]);
     } finally {
       setAttente(false);
     }
@@ -122,10 +126,19 @@ export default function CoachScreen() {
       { text: 'Annuler', style: 'cancel' },
     ]);
 
-  const effacer = () => {
-    setMessages([]);
-    AsyncStorage.removeItem(CLE).catch(() => {});
-  };
+  const effacer = () =>
+    Alert.alert('Nouvelle conversation', 'Effacer toute la conversation avec le coach ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Effacer',
+        style: 'destructive',
+        onPress: () => {
+          setMessages([]);
+          AsyncStorage.removeItem(CLE).catch(() => {});
+        },
+      },
+    ]);
+  const [imagesCassees, setImagesCassees] = useState<Set<string>>(new Set());
 
   return (
     <Ecran titre="Coach" sousTitre="Ton coach IA" defilement={false}>
@@ -153,9 +166,12 @@ export default function CoachScreen() {
             const versProfil = m.erreur && /clé/i.test(m.texte);
             return (
               <View key={m.id} style={{ alignSelf: moi ? 'flex-end' : 'flex-start', maxWidth: '86%', gap: 6, alignItems: moi ? 'flex-end' : 'flex-start' }}>
-                {m.imageUri ? (
+                {m.imageUri && !imagesCassees.has(m.imageUri) ? (
                   <Pressable onPress={() => setGrande(m.imageUri!)}>
-                    <Image source={{ uri: m.imageUri }} style={{ width: 220, height: 165, borderRadius: 16, backgroundColor: C.backgroundElement }} />
+                    <Image
+                      source={{ uri: m.imageUri }}
+                      onError={() => setImagesCassees((s) => new Set(s).add(m.imageUri!))}
+                      style={{ width: 220, height: 165, borderRadius: 16, backgroundColor: C.backgroundElement }} />
                   </Pressable>
                 ) : null}
               <View
@@ -171,7 +187,7 @@ export default function CoachScreen() {
                 }}>
                 <Texte couleur={moi ? C.accentText : m.erreur ? C.danger : C.text}>{m.texte}</Texte>
                 {versProfil && (
-                  <Pressable onPress={() => router.navigate('/profil')} style={{ alignSelf: 'flex-start', backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+                  <Pressable onPress={() => router.navigate({ pathname: '/profil', params: { cle: '1' } })} style={{ alignSelf: 'flex-start', backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
                     <Texte type="gras" couleur={C.accentText}>
                       Aller au Profil pour ajouter la clé
                     </Texte>

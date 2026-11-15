@@ -78,8 +78,9 @@ export function imc(p: Pick<Profil, 'poidsKg' | 'tailleCm'>): number {
 
 export function objectifMacros(p: Profil): Macros {
   const kcal = objectifKcal(p);
-  // 1,8 g/kg ; si IMC > 30, on se base sur le poids cible pour ne pas surestimer.
-  const poidsRef = imc(p) > 30 ? p.poidsCibleKg : p.poidsKg;
+  // 1,8 g/kg du poids « de référence » : le poids actuel, plafonné au poids correspondant à un IMC de 25
+  // (évite des quantités énormes en cas de surpoids, sans saut brutal ni dépendance à la cible).
+  const poidsRef = Math.min(p.poidsKg, 25 * (p.tailleCm / 100) ** 2);
   const proteinesG = Math.round(1.8 * poidsRef);
   const lipidesG = Math.round(Math.max((kcal * 0.3) / 9, 0.6 * p.poidsKg));
   const glucidesG = Math.max(0, Math.round((kcal - proteinesG * 4 - lipidesG * 9) / 4));
