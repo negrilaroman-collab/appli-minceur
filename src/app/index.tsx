@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
 import { BilanSemaine } from '@/components/bilan-semaine';
+import { CarteActivite } from '@/components/activite';
 import { CarteBoissons } from '@/components/boissons';
 import { CourbePoids } from '@/components/courbe-poids';
 import { Anneau, Barre, Bouton, C, Carte, Champ, Ecran, Texte } from '@/components/ui';
@@ -116,6 +117,7 @@ export default function AujourdhuiScreen() {
       </Carte>
 
       <CarteBoissons jour={jour} />
+      <CarteActivite jour={jour} />
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>

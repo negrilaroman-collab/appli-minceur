@@ -43,6 +43,7 @@ interface Donnees {
   seancesFaites: string[]; // clés « début du cycle:semaine:séance »
   eauMl: Record<string, number>; // eau bue par jour (YYYY-MM-DD → ml)
   pas: Record<string, number>; // pas par jour lus dans Health Connect
+  santeConnectee: boolean;
 }
 
 interface Store extends Donnees {
@@ -55,12 +56,15 @@ interface Store extends Donnees {
   basculerSeance: (cle: string) => void;
   ajouterEau: (date: string, ml: number) => void;
   enregistrerPas: (pas: Record<string, number>) => void;
+  definirSanteConnectee: (v: boolean) => void;
+  /** Ajoute les pesées venues d'une balance connectée, sans écraser celles notées à la main. */
+  importerPesees: (p: Pesee[]) => void;
 }
 
 export const cleSeance = (debutProgramme: string, semaine: number, seance: number) => `${debutProgramme}:${semaine}:${seance}`;
 
 const CLE = 'appli-minceur/v1';
-const VIDE: Donnees = { profil: null, repas: [], pesees: [], bilans: [], seancesFaites: [], eauMl: {}, pas: {} };
+const VIDE: Donnees = { profil: null, repas: [], pesees: [], bilans: [], seancesFaites: [], eauMl: {}, pas: {}, santeConnectee: false };
 const Ctx = createContext<Store | null>(null);
 
 export function aujourdhui(): string {
@@ -109,6 +113,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })),
       ajouterEau: (date, ml) => setDonnees((d) => ({ ...d, eauMl: { ...d.eauMl, [date]: Math.max(0, (d.eauMl[date] ?? 0) + ml) } })),
       enregistrerPas: (pas) => setDonnees((d) => ({ ...d, pas: { ...d.pas, ...pas } })),
+      definirSanteConnectee: (v) => setDonnees((d) => ({ ...d, santeConnectee: v })),
+      importerPesees: (liste) =>
+        setDonnees((d) => {
+          const nouvelles = liste.filter((p) => !d.pesees.some((x) => x.date === p.date));
+          if (!nouvelles.length) return d;
+          const pesees = [...d.pesees, ...nouvelles].sort((a, b) => a.date.localeCompare(b.date));
+          const derniere = pesees[pesees.length - 1];
+          return { ...d, pesees, profil: d.profil ? { ...d.profil, poidsKg: derniere.poidsKg } : d.profil };
+        }),
       basculerSeance: (cle) =>
         setDonnees((d) => ({
           ...d,

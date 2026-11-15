@@ -20,7 +20,9 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.appliminceur.app",
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_WEIGHT"
       ]
     },
     "web": {
@@ -37,7 +39,16 @@
           "imageWidth": 76
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
