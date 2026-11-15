@@ -15,7 +15,7 @@ export interface ProfilComplet extends Profil {
 export interface Repas {
   id: string;
   date: string; // YYYY-MM-DD
-  moment: 'petit-dej' | 'dejeuner' | 'diner' | 'collation';
+  moment: 'petit-dej' | 'dejeuner' | 'diner' | 'collation' | 'boisson';
   nom: string;
   kcal: number;
   proteinesG: number;
@@ -41,6 +41,8 @@ interface Donnees {
   pesees: Pesee[];
   bilans: BilanEnregistre[];
   seancesFaites: string[]; // clés « début du cycle:semaine:séance »
+  eauMl: Record<string, number>; // eau bue par jour (YYYY-MM-DD → ml)
+  pas: Record<string, number>; // pas par jour lus dans Health Connect
 }
 
 interface Store extends Donnees {
@@ -51,12 +53,14 @@ interface Store extends Donnees {
   ajouterPesee: (p: Pesee) => void;
   enregistrerBilan: (b: BilanEnregistre) => void;
   basculerSeance: (cle: string) => void;
+  ajouterEau: (date: string, ml: number) => void;
+  enregistrerPas: (pas: Record<string, number>) => void;
 }
 
 export const cleSeance = (debutProgramme: string, semaine: number, seance: number) => `${debutProgramme}:${semaine}:${seance}`;
 
 const CLE = 'appli-minceur/v1';
-const VIDE: Donnees = { profil: null, repas: [], pesees: [], bilans: [], seancesFaites: [] };
+const VIDE: Donnees = { profil: null, repas: [], pesees: [], bilans: [], seancesFaites: [], eauMl: {}, pas: {} };
 const Ctx = createContext<Store | null>(null);
 
 export function aujourdhui(): string {
@@ -103,6 +107,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           bilans: [...d.bilans, b],
           profil: d.profil ? { ...d.profil, ajustementKcal: (d.profil.ajustementKcal ?? 0) + (b.kcalApres - b.kcalAvant) } : d.profil,
         })),
+      ajouterEau: (date, ml) => setDonnees((d) => ({ ...d, eauMl: { ...d.eauMl, [date]: Math.max(0, (d.eauMl[date] ?? 0) + ml) } })),
+      enregistrerPas: (pas) => setDonnees((d) => ({ ...d, pas: { ...d.pas, ...pas } })),
       basculerSeance: (cle) =>
         setDonnees((d) => ({
           ...d,

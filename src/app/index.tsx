@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
 import { BilanSemaine } from '@/components/bilan-semaine';
+import { CarteBoissons } from '@/components/boissons';
 import { CourbePoids } from '@/components/courbe-poids';
 import { Anneau, Barre, Bouton, C, Carte, Champ, Ecran, Texte } from '@/components/ui';
 import { moyenne7Jours, objectifMacros } from '@/lib/nutrition';
@@ -114,6 +115,8 @@ export default function AujourdhuiScreen() {
         </View>
       </Carte>
 
+      <CarteBoissons jour={jour} />
+
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>
           <Bouton titre="+ Repas" onPress={() => router.navigate('/repas')} />
@@ -129,7 +132,7 @@ export default function AujourdhuiScreen() {
         <Texte type="petit">
           {semaine.seances.length} séances cette semaine : {semaine.seances.map((s) => s.titre).join(', ')}.
         </Texte>
-        <Barre libelle="Séances faites" valeur={faites} cible={semaine.seances.length} unite="" couleur={C.cyan} />
+        <Barre libelle="Séances faites" valeur={faites} cible={semaine.seances.length} unite="" couleur={C.cyan} plusEstMieux />
         <Bouton titre="Voir le programme" secondaire onPress={() => router.navigate('/sport')} />
       </Carte>
 

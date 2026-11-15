@@ -136,9 +136,26 @@ export function Segments<T extends string>({ options, valeur, onChange }: { opti
   );
 }
 
-export function Barre({ libelle, valeur, cible, unite, couleur = C.accent }: { libelle: string; valeur: number; cible: number; unite: string; couleur?: string }) {
+export function Barre({
+  libelle,
+  valeur,
+  cible,
+  unite,
+  couleur = C.accent,
+  decimales = 0,
+  plusEstMieux = false,
+}: {
+  libelle: string;
+  valeur: number;
+  cible: number;
+  unite: string;
+  couleur?: string;
+  decimales?: number;
+  plusEstMieux?: boolean;
+}) {
   const ratio = cible > 0 ? Math.min(valeur / cible, 1) : 0;
-  const depasse = valeur > cible;
+  const depasse = valeur > cible && !plusEstMieux;
+  const fmt = (n: number) => n.toFixed(decimales).replace('.', ',');
   return (
     <View style={{ gap: 6, flex: 1 }}>
       <Text style={styles.label}>{libelle.toUpperCase()}</Text>

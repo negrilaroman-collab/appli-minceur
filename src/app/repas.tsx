@@ -12,6 +12,7 @@ const MOMENTS: { valeur: Repas['moment']; texte: string }[] = [
   { valeur: 'dejeuner', texte: 'Déjeuner' },
   { valeur: 'diner', texte: 'Dîner' },
   { valeur: 'collation', texte: 'Collation' },
+  { valeur: 'boisson', texte: 'Boisson' },
 ];
 
 function momentParDefaut(): Repas['moment'] {
@@ -55,7 +56,7 @@ export default function RepasScreen() {
     if (recents.length >= 10) break;
     if (!recents.some((x) => x.nom.toLowerCase() === r.nom.toLowerCase())) recents.push(r);
   }
-  const libelleMoment = moment === 'collation' ? 'en collation' : `au ${MOMENTS.find((m) => m.valeur === moment)?.texte.toLowerCase()}`;
+  const libelleMoment = moment === 'collation' ? 'en collation' : moment === 'boisson' ? 'en boisson' : `au ${MOMENTS.find((m) => m.valeur === moment)?.texte.toLowerCase()}`;
   const refaire = (r: Repas) =>
     Alert.alert('Refaire ce repas ?', `${r.nom} (${r.kcal} kcal) ${libelleMoment}, ${libelleJour}.`, [
       { text: 'Annuler', style: 'cancel' },
