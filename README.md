@@ -8,27 +8,19 @@ Fiche complète du projet : https://claude.ai/artifact/A64jxs65iAFk4ZtqKpb1KS
 
 - **Profil** : calcul du métabolisme de base (Mifflin-St Jeor), de la dépense totale, de l'objectif kcal (déficit 15 à 25 %, plafonné à 750 kcal, jamais sous 1 500 kcal pour un homme / 1 200 pour une femme) et des macros.
 - **Aujourd'hui** : kcal restantes, barres protéines / lipides / glucides, pesée du jour et moyenne sur 7 jours.
-- **Repas** : photo de l'assiette analysée par l'IA Claude (aliments, grammes, kcal avec fourchette). Si l'IA doute (confiance < 0,7 ou fourchette > ± 20 %), elle pose 1 à 3 questions à boutons, au plus 2 fois. Tu peux ensuite ajuster chaque portion (± 10 %) ou retirer un aliment avant de valider. Ajout manuel aussi possible.
+- **Repas** : photo de l'assiette analysée par l'IA (Gemini gratuit par défaut, ou Claude payant) (aliments, grammes, kcal avec fourchette). Si l'IA doute (confiance < 0,7 ou fourchette > ± 20 %), elle pose 1 à 3 questions à boutons, au plus 2 fois. Tu peux ensuite ajuster chaque portion (± 10 %) ou retirer un aliment avant de valider. Ajout manuel aussi possible.
 - **Sport** : programme de 12 semaines généré selon le niveau, le lieu et le nombre de jours (semaines 5 et 9 allégées).
 
 À venir : base nutritionnelle CIQUAL intégrée (pour l'instant, les valeurs pour 100 g viennent de l'IA), mémorisation de tes portions habituelles, bilan hebdomadaire automatique.
 
 ## Clé API pour la photo
 
-Dans l'onglet **Profil**, colle ta clé API Anthropic (créée sur [console.anthropic.com](https://console.anthropic.com/settings/keys)). Elle est stockée chiffrée sur ton téléphone et n'est jamais dans le code. L'appli appelle l'API directement depuis ton téléphone : c'est adapté à un usage personnel, mais si l'appli est un jour publiée pour d'autres personnes, il faudra passer par un petit serveur pour ne pas exposer la clé.
+Dans l'onglet **Profil**, choisis le service puis colle ta clé :
 
-## Lancer l'appli sur ton téléphone Android
+- **Gemini (gratuit, par défaut)** : crée une clé gratuite sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey) avec un compte Google. Le quota gratuit est limité par jour. Avec la version gratuite, Google peut utiliser les photos envoyées pour améliorer ses produits.
+- **Claude (payant)** : clé sur [console.anthropic.com](https://console.anthropic.com/settings/keys), environ 2 centimes par photo avec Sonnet 5.5.
 
-1. Installe [Node.js](https://nodejs.org) (version 20 ou plus) sur ton ordinateur.
-2. Installe l'appli **Expo Go** depuis le Play Store sur ton téléphone.
-3. Dans un terminal :
-   ```bash
-   git clone https://github.com/negrilaroman-collab/appli-minceur
-   cd appli-minceur
-   npm install
-   npx expo start
-   ```
-4. Scanne le QR code affiché avec Expo Go (téléphone et ordinateur sur le même Wi-Fi).
+Chaque personne peut utiliser sa propre clé, ou partager la même (le quota est alors partagé). La clé est stockée chiffrée sur le téléphone et n'est jamais dans le code. L'appli appelle le service directement depuis le téléphone : c'est adapté à un petit groupe de proches, pas à une appli publique.
 
 ## Commandes utiles
 

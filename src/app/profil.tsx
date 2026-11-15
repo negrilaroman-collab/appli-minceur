@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Bouton, Carte, Champ, Choix, Ecran } from '@/components/ui';
@@ -14,7 +14,15 @@ import {
   type Rythme,
   type Sexe,
 } from '@/lib/nutrition';
-import { enregistrerCleApi, lireCleApi } from '@/lib/claude';
+import {
+  enregistrerCleApi,
+  enregistrerFournisseur,
+  LIBELLES_FOURNISSEUR,
+  LIENS_CLE,
+  lireCleApi,
+  lireFournisseur,
+  type Fournisseur,
+} from '@/lib/ia-commun';
 import { aujourdhui, useStore, type ProfilComplet } from '@/lib/store';
 import type { Lieu, Niveau } from '@/lib/training';
 
@@ -34,13 +42,22 @@ export default function ProfilScreen() {
   const [jours, setJours] = useState(String(profil?.joursSport ?? 3));
   const [cleApi, setCleApi] = useState('');
   const [aUneCle, setAUneCle] = useState(false);
+  const [fournisseur, setFournisseur] = useState<Fournisseur>('gemini');
 
   useEffect(() => {
-    lireCleApi().then((c) => setAUneCle(!!c));
+    lireFournisseur().then(setFournisseur);
   }, []);
+  useEffect(() => {
+    lireCleApi(fournisseur).then((c) => setAUneCle(!!c));
+  }, [fournisseur]);
+
+  const changerFournisseur = async (f: Fournisseur) => {
+    setFournisseur(f);
+    await enregistrerFournisseur(f);
+  };
 
   const sauverCle = async () => {
-    await enregistrerCleApi(cleApi);
+    await enregistrerCleApi(fournisseur, cleApi);
     setAUneCle(!!cleApi.trim());
     setCleApi('');
     Alert.alert(cleApi.trim() ? 'Clé enregistrée' : 'Clé supprimée', cleApi.trim() ? 'La photo des repas est prête.' : '');
@@ -144,15 +161,23 @@ export default function ProfilScreen() {
       <Bouton titre="Enregistrer" onPress={enregistrer} />
 
       <Carte>
-        <ThemedText type="smallBold">Clé API Anthropic (photo des repas)</ThemedText>
+        <ThemedText type="smallBold">IA pour la photo des repas</ThemedText>
+        <Choix
+          libelle="Service"
+          valeur={fournisseur}
+          onChange={changerFournisseur}
+          options={(['gemini', 'claude'] as Fournisseur[]).map((f) => ({ valeur: f, texte: LIBELLES_FOURNISSEUR[f] }))}
+        />
         <ThemedText type="small" themeColor="textSecondary">
-          {aUneCle ? 'Une clé est enregistrée sur ce téléphone.' : 'Aucune clé enregistrée.'} Elle est stockée chiffrée sur ton téléphone et sert uniquement à analyser tes photos.
+          {aUneCle ? 'Une clé est enregistrée pour ce service.' : 'Aucune clé enregistrée pour ce service.'} Elle est stockée chiffrée sur ton téléphone.
+          {fournisseur === 'gemini' ? ' Avec la version gratuite, Google peut utiliser tes photos pour améliorer ses produits.' : ''}
         </ThemedText>
+        <Bouton titre="Obtenir une clé" secondaire onPress={() => Linking.openURL(LIENS_CLE[fournisseur])} />
         <Champ
           libelle={aUneCle ? 'Remplacer la clé (laisser vide pour la supprimer)' : 'Colle ta clé ici'}
           value={cleApi}
           onChangeText={setCleApi}
-          placeholder="sk-ant-..."
+          placeholder={fournisseur === 'gemini' ? 'AIza...' : 'sk-ant-...'}
           autoCapitalize="none"
           autoCorrect={false}
           secureTextEntry

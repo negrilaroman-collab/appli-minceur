@@ -6,7 +6,7 @@ import { ActivityIndicator, Image, Pressable, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Bouton, Carte, Champ, VERT } from '@/components/ui';
-import { analyser, ErreurAnalyse, premierTour, tourReponses, type Tour } from '@/lib/claude';
+import { demarrerAnalyse, ErreurAnalyse, repondreQuestions, type Session } from '@/lib/ia';
 import {
   ajusterPortion,
   arrondirTotaux,
@@ -36,15 +36,15 @@ export function PhotoRepas({ onValider }: { onValider: (r: ResultatPhoto) => voi
   const [etape, setEtape] = useState<Etape>({ nom: 'repos' });
   const [image, setImage] = useState<string | null>(null);
   const [precision, setPrecision] = useState('');
-  const [historique, setHistorique] = useState<Tour[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
   const [tours, setTours] = useState(0);
   const [reponses, setReponses] = useState<Record<string, string>>({});
 
-  const lancer = async (tourList: Tour[], toursFaits: number) => {
+  const lancer = async (appel: () => Promise<{ analyse: AnalysePhoto; session: Session }>, toursFaits: number) => {
     setEtape({ nom: 'analyse' });
     try {
-      const { analyse, historique: h } = await analyser(tourList);
-      setHistorique(h);
+      const { analyse, session: s } = await appel();
+      setSession(s);
       setReponses({});
       if (doitPoserQuestions(analyse, toursFaits)) setEtape({ nom: 'questions', analyse });
       else setEtape({ nom: 'resultat', analyse });
@@ -76,28 +76,28 @@ export function PhotoRepas({ onValider }: { onValider: (r: ResultatPhoto) => voi
     }
     setImage(petite.uri);
     setTours(0);
-    const h = [premierTour(petite.base64, precision.trim())];
-    await lancer(h, 0);
+    const base64 = petite.base64;
+    await lancer(() => demarrerAnalyse(base64, precision.trim()), 0);
   };
 
   const envoyerReponses = async (analyse: AnalysePhoto) => {
     const liste = analyse.questions
       .filter((q) => reponses[q.id])
       .map((q) => ({ question: q.question, reponse: reponses[q.id] }));
-    if (liste.length === 0) {
+    if (liste.length === 0 || !session) {
       setEtape({ nom: 'resultat', analyse });
       return;
     }
     const n = tours + 1;
     setTours(n);
-    await lancer([...historique, tourReponses(liste)], n);
+    await lancer(() => repondreQuestions(session, liste), n);
   };
 
   const reinitialiser = () => {
     setEtape({ nom: 'repos' });
     setImage(null);
     setPrecision('');
-    setHistorique([]);
+    setSession(null);
     setTours(0);
   };
 
