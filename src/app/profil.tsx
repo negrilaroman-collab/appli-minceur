@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, Linking } from 'react-native';
+import { useState } from 'react';
+import { Alert } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { CarteCleGemini } from '@/components/cle-gemini';
 import { Bouton, Carte, Champ, Choix, Ecran } from '@/components/ui';
 import {
   LIBELLES_ACTIVITE,
@@ -14,7 +15,6 @@ import {
   type Rythme,
   type Sexe,
 } from '@/lib/nutrition';
-import { enregistrerCleApi, LIEN_CLE_GEMINI, lireCleApi } from '@/lib/ia-commun';
 import { aujourdhui, useStore, type ProfilComplet } from '@/lib/store';
 import type { Lieu, Niveau } from '@/lib/training';
 
@@ -32,20 +32,6 @@ export default function ProfilScreen() {
   const [niveau, setNiveau] = useState<Niveau>(profil?.niveauSport ?? 'debutant');
   const [lieu, setLieu] = useState<Lieu>(profil?.lieuSport ?? 'maison');
   const [jours, setJours] = useState(String(profil?.joursSport ?? 3));
-  const [cleApi, setCleApi] = useState('');
-  const [aUneCle, setAUneCle] = useState(false);
-
-  useEffect(() => {
-    lireCleApi().then((c) => setAUneCle(!!c));
-  }, []);
-
-  const sauverCle = async () => {
-    await enregistrerCleApi(cleApi);
-    setAUneCle(!!cleApi.trim());
-    setCleApi('');
-    Alert.alert(cleApi.trim() ? 'Clé enregistrée' : 'Clé supprimée', cleApi.trim() ? 'La photo des repas est prête.' : '');
-  };
-
   const brouillon: ProfilComplet = {
     sexe,
     age: nombre(age),
@@ -143,23 +129,7 @@ export default function ProfilScreen() {
 
       <Bouton titre="Enregistrer" onPress={enregistrer} />
 
-      <Carte>
-        <ThemedText type="smallBold">Clé IA (Gemini, gratuite)</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {aUneCle ? 'Une clé Gemini est enregistrée.' : 'Aucune clé enregistrée.'} Crée une clé gratuite avec ton compte Google, puis colle-la ici. Elle est stockée chiffrée sur ton téléphone. Avec la version gratuite, Google peut utiliser tes photos pour améliorer ses produits.
-        </ThemedText>
-        <Bouton titre="Obtenir une clé gratuite" secondaire onPress={() => Linking.openURL(LIEN_CLE_GEMINI)} />
-        <Champ
-          libelle={aUneCle ? 'Remplacer la clé (laisser vide pour la supprimer)' : 'Colle ta clé ici'}
-          value={cleApi}
-          onChangeText={setCleApi}
-          placeholder="AIza..."
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry
-        />
-        <Bouton titre="Enregistrer la clé" secondaire onPress={sauverCle} />
-      </Carte>
+      <CarteCleGemini />
       <ThemedText type="small" themeColor="textSecondary">
         Conseils généraux, ne remplace pas un avis médical. En cas de maladie, grossesse ou troubles alimentaires, demande l'avis d'un professionnel.
       </ThemedText>

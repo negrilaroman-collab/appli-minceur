@@ -50,3 +50,5 @@ export async function demanderCoach(conversation: MessageCoach[], contexte: Cont
   );
   return discuterGemini(await cle(), systemeCoach(contexte), historique);
 }
+
+export { testerCleGemini } from './gemini';

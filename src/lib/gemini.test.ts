@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { analyserGemini, corpsRequete, lireReponse, MODELES_GEMINI, premierTourGemini } from './gemini.ts';
+import { analyserGemini, corpsRequete, lireReponse, MODELES_GEMINI, premierTourGemini, testerCleGemini } from './gemini.ts';
 import { ErreurAnalyse } from './ia-texte.ts';
 
 const analyseJson = {
@@ -58,4 +58,11 @@ test('modèle introuvable (404) → essaie le suivant', async () => {
 test('quota atteint (429) → message quota', async () => {
   const { f } = fauxFetch([429]);
   await assert.rejects(analyserGemini('k', [premierTourGemini('AAAA', 'x')], f), /Quota/);
+});
+
+test('test de clé : valide → ok, invalide → message clair', async () => {
+  const ok = { candidates: [{ content: { parts: [{ text: 'OK' }] } }] };
+  await testerCleGemini('cle', fauxFetch([200], ok).f);
+  const refus = (async () => new Response('{"error":{"message":"API key not valid"}}', { status: 400 })) as unknown as typeof fetch;
+  await assert.rejects(testerCleGemini('mauvaise', refus), /Clé Gemini refusée/);
 });

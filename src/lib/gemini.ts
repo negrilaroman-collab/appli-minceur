@@ -139,3 +139,8 @@ export function premierTourGemini(base64Jpeg: string | null, texte: string): Tou
   const image = base64Jpeg ? [{ inline_data: { mime_type: 'image/jpeg', data: base64Jpeg } }] : [];
   return { role: 'user', parts: [...image, { text: texte }] };
 }
+
+/** Petit appel pour vérifier qu'une clé fonctionne. Lève ErreurAnalyse sinon. */
+export async function testerCleGemini(apiKey: string, fetchFn: typeof fetch = fetch): Promise<void> {
+  await discuterGemini(apiKey, 'Réponds seulement OK.', [{ role: 'user', parts: [{ text: 'Test' }] }], fetchFn);
+}

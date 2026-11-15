@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View, type ScrollViewInstance } from 'react-native';
+import { ActivityIndicator, Alert, Image, Keyboard, Modal, Platform, Pressable, ScrollView, TextInput, View, type ScrollViewInstance, type ViewInstance } from 'react-native';
 
 import { C, Ecran, Texte } from '@/components/ui';
 import { BottomTabInset } from '@/constants/theme';
@@ -27,7 +28,32 @@ export default function CoachScreen() {
   const [texte, setTexte] = useState('');
   const [image, setImage] = useState<{ uri: string; base64: string } | null>(null);
   const [attente, setAttente] = useState(false);
+  const [grande, setGrande] = useState<string | null>(null);
   const scroll = useRef<ScrollViewInstance>(null);
+  const racine = useRef<ViewInstance>(null);
+  // Hauteur du clavier qui recouvre l'écran (Android affiche l'appli sous le clavier).
+  const [clavier, setClavier] = useState<{ ouvert: boolean; recouvre: number }>({ ouvert: false, recouvre: 0 });
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const montre = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (e) => {
+      const hautClavier = e.endCoordinates.screenY;
+      const repli = () => setClavier({ ouvert: true, recouvre: Math.max(0, e.endCoordinates.height - BottomTabInset) });
+      if (!racine.current) return repli();
+      racine.current.measureInWindow((_x, y, _l, h) => {
+        if (!h) return repli();
+        setClavier({ ouvert: true, recouvre: Math.max(0, y + h - hautClavier) });
+        setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+      });
+    });
+    const cache = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () =>
+      setClavier({ ouvert: false, recouvre: 0 }),
+    );
+    return () => {
+      montre.remove();
+      cache.remove();
+    };
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(CLE)
@@ -85,8 +111,16 @@ export default function CoachScreen() {
 
   const ajouterPhoto = async (camera: boolean) => {
     const r = await choisirImage(camera);
-    if (r && !('erreur' in r)) setImage(r);
+    if (r && 'erreur' in r) Alert.alert('Photo', r.erreur);
+    else if (r) setImage(r);
   };
+
+  const menuPhoto = () =>
+    Alert.alert('Ajouter une photo', 'Par exemple ton frigo, un plat ou une étiquette.', [
+      { text: 'Prendre une photo', onPress: () => ajouterPhoto(true) },
+      { text: 'Choisir dans la galerie', onPress: () => ajouterPhoto(false) },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
 
   const effacer = () => {
     setMessages([]);
@@ -95,7 +129,7 @@ export default function CoachScreen() {
 
   return (
     <Ecran titre="Coach" sousTitre="Ton coach IA" defilement={false}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View ref={racine} style={{ flex: 1 }}>
         <ScrollView
           ref={scroll}
           style={{ flex: 1 }}
@@ -116,12 +150,16 @@ export default function CoachScreen() {
           )}
           {messages.map((m) => {
             const moi = m.role === 'utilisateur';
+            const versProfil = m.erreur && /clé/i.test(m.texte);
             return (
+              <View key={m.id} style={{ alignSelf: moi ? 'flex-end' : 'flex-start', maxWidth: '86%', gap: 6, alignItems: moi ? 'flex-end' : 'flex-start' }}>
+                {m.imageUri ? (
+                  <Pressable onPress={() => setGrande(m.imageUri!)}>
+                    <Image source={{ uri: m.imageUri }} style={{ width: 220, height: 165, borderRadius: 16, backgroundColor: C.backgroundElement }} />
+                  </Pressable>
+                ) : null}
               <View
-                key={m.id}
                 style={{
-                  alignSelf: moi ? 'flex-end' : 'flex-start',
-                  maxWidth: '86%',
                   backgroundColor: moi ? C.accent : C.backgroundElement,
                   borderColor: m.erreur ? C.danger : C.bordure,
                   borderWidth: moi ? 0 : 1,
@@ -131,8 +169,15 @@ export default function CoachScreen() {
                   padding: 12,
                   gap: 8,
                 }}>
-                {m.imageUri ? <Image source={{ uri: m.imageUri }} style={{ width: 200, height: 150, borderRadius: 12 }} /> : null}
                 <Texte couleur={moi ? C.accentText : m.erreur ? C.danger : C.text}>{m.texte}</Texte>
+                {versProfil && (
+                  <Pressable onPress={() => router.navigate('/profil')} style={{ alignSelf: 'flex-start', backgroundColor: C.accent, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+                    <Texte type="gras" couleur={C.accentText}>
+                      Aller au Profil pour ajouter la clé
+                    </Texte>
+                  </Pressable>
+                )}
+              </View>
               </View>
             );
           })}
@@ -150,17 +195,30 @@ export default function CoachScreen() {
         </ScrollView>
 
         {image && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 6 }}>
-            <Image source={{ uri: image.uri }} style={{ width: 56, height: 56, borderRadius: 10 }} />
-            <Pressable onPress={() => setImage(null)}>
-              <Texte type="petit" couleur={C.danger}>
-                Retirer la photo
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 8, marginBottom: 8, backgroundColor: C.backgroundElement, borderColor: C.bordure, borderWidth: 1, borderRadius: 16 }}>
+            <Pressable onPress={() => setGrande(image.uri)}>
+              <Image source={{ uri: image.uri }} style={{ width: 64, height: 64, borderRadius: 12 }} />
+            </Pressable>
+            <View style={{ flex: 1 }}>
+              <Texte type="gras">Photo jointe</Texte>
+              <Texte type="petit">Touche-la pour la voir en grand</Texte>
+            </View>
+            <Pressable onPress={() => setImage(null)} hitSlop={8} style={rond(C.backgroundSelected)}>
+              <Texte type="gras" couleur={C.danger}>
+                ✕
               </Texte>
             </Pressable>
           </View>
         )}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingBottom: BottomTabInset + 8 }}>
-          <Pressable onPress={() => ajouterPhoto(true)} onLongPress={() => ajouterPhoto(false)} style={rond(C.backgroundSelected)}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-end',
+            gap: 8,
+            paddingTop: 4,
+            paddingBottom: clavier.ouvert ? clavier.recouvre + 8 : BottomTabInset + 8,
+          }}>
+          <Pressable onPress={menuPhoto} style={rond(C.backgroundSelected)}>
             <Texte type="gras">📷</Texte>
           </Pressable>
           <TextInput
@@ -188,7 +246,19 @@ export default function CoachScreen() {
             </Texte>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </View>
+
+      <Modal visible={!!grande} transparent animationType="fade" onRequestClose={() => setGrande(null)}>
+        <Pressable onPress={() => setGrande(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center' }}>
+          {grande && <Image source={{ uri: grande }} style={{ width: '100%', height: '80%' }} resizeMode="contain" />}
+          <View style={{ position: 'absolute', top: 48, right: 20, ...rond(C.backgroundSelected) }}>
+            <Texte type="gras">✕</Texte>
+          </View>
+          <View style={{ position: 'absolute', bottom: 48, alignSelf: 'center' }}>
+            <Texte type="petit">Touche l’écran pour fermer</Texte>
+          </View>
+        </Pressable>
+      </Modal>
     </Ecran>
   );
 }
