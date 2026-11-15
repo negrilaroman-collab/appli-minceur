@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
+import { PhotoRepas } from '@/components/photo-repas';
 import { ThemedText } from '@/components/themed-text';
 import { Bouton, Carte, Champ, Choix, Ecran } from '@/components/ui';
 import { aujourdhui, useStore, type Repas } from '@/lib/store';
@@ -41,16 +42,11 @@ export default function RepasScreen() {
 
   return (
     <Ecran titre="Repas">
-      <Carte>
-        <ThemedText type="smallBold">Photo de l'assiette</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Bientôt : prends ton plat en photo, l'IA estime les kcal et te pose une ou deux questions si elle a un doute.
-        </ThemedText>
-      </Carte>
+      <Choix libelle="Moment" valeur={moment} onChange={setMoment} options={MOMENTS} />
+      <PhotoRepas onValider={(r) => ajouterRepas({ date: jour, moment, ...r })} />
 
       <Carte>
         <ThemedText type="smallBold">Ajouter à la main</ThemedText>
-        <Choix libelle="Moment" valeur={moment} onChange={setMoment} options={MOMENTS} />
         <Champ libelle="Aliment ou plat" value={nom} onChangeText={setNom} placeholder="Poulet riz brocolis" />
         <Champ libelle="kcal" keyboardType="number-pad" value={kcal} onChangeText={setKcal} placeholder="550" />
         <View style={{ flexDirection: 'row', gap: 8 }}>

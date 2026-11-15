@@ -8,10 +8,14 @@ Fiche complète du projet : https://claude.ai/artifact/A64jxs65iAFk4ZtqKpb1KS
 
 - **Profil** : calcul du métabolisme de base (Mifflin-St Jeor), de la dépense totale, de l'objectif kcal (déficit 15 à 25 %, plafonné à 750 kcal, jamais sous 1 500 kcal pour un homme / 1 200 pour une femme) et des macros.
 - **Aujourd'hui** : kcal restantes, barres protéines / lipides / glucides, pesée du jour et moyenne sur 7 jours.
-- **Repas** : ajout manuel d'un aliment avec ses kcal et macros, liste par moment de la journée.
+- **Repas** : photo de l'assiette analysée par l'IA Claude (aliments, grammes, kcal avec fourchette). Si l'IA doute (confiance < 0,7 ou fourchette > ± 20 %), elle pose 1 à 3 questions à boutons, au plus 2 fois. Tu peux ensuite ajuster chaque portion (± 10 %) ou retirer un aliment avant de valider. Ajout manuel aussi possible.
 - **Sport** : programme de 12 semaines généré selon le niveau, le lieu et le nombre de jours (semaines 5 et 9 allégées).
 
-À venir : photo de l'assiette analysée par l'IA avec questions en cas de doute, base nutritionnelle CIQUAL, bilan hebdomadaire automatique.
+À venir : base nutritionnelle CIQUAL intégrée (pour l'instant, les valeurs pour 100 g viennent de l'IA), mémorisation de tes portions habituelles, bilan hebdomadaire automatique.
+
+## Clé API pour la photo
+
+Dans l'onglet **Profil**, colle ta clé API Anthropic (créée sur [console.anthropic.com](https://console.anthropic.com/settings/keys)). Elle est stockée chiffrée sur ton téléphone et n'est jamais dans le code. L'appli appelle l'API directement depuis ton téléphone : c'est adapté à un usage personnel, mais si l'appli est un jour publiée pour d'autres personnes, il faudra passer par un petit serveur pour ne pas exposer la clé.
 
 ## Lancer l'appli sur ton téléphone Android
 

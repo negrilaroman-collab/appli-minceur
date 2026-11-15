@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -14,6 +14,7 @@ import {
   type Rythme,
   type Sexe,
 } from '@/lib/nutrition';
+import { enregistrerCleApi, lireCleApi } from '@/lib/claude';
 import { aujourdhui, useStore, type ProfilComplet } from '@/lib/store';
 import type { Lieu, Niveau } from '@/lib/training';
 
@@ -31,6 +32,19 @@ export default function ProfilScreen() {
   const [niveau, setNiveau] = useState<Niveau>(profil?.niveauSport ?? 'debutant');
   const [lieu, setLieu] = useState<Lieu>(profil?.lieuSport ?? 'maison');
   const [jours, setJours] = useState(String(profil?.joursSport ?? 3));
+  const [cleApi, setCleApi] = useState('');
+  const [aUneCle, setAUneCle] = useState(false);
+
+  useEffect(() => {
+    lireCleApi().then((c) => setAUneCle(!!c));
+  }, []);
+
+  const sauverCle = async () => {
+    await enregistrerCleApi(cleApi);
+    setAUneCle(!!cleApi.trim());
+    setCleApi('');
+    Alert.alert(cleApi.trim() ? 'Clé enregistrée' : 'Clé supprimée', cleApi.trim() ? 'La photo des repas est prête.' : '');
+  };
 
   const brouillon: ProfilComplet = {
     sexe,
@@ -128,6 +142,23 @@ export default function ProfilScreen() {
       )}
 
       <Bouton titre="Enregistrer" onPress={enregistrer} />
+
+      <Carte>
+        <ThemedText type="smallBold">Clé API Anthropic (photo des repas)</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {aUneCle ? 'Une clé est enregistrée sur ce téléphone.' : 'Aucune clé enregistrée.'} Elle est stockée chiffrée sur ton téléphone et sert uniquement à analyser tes photos.
+        </ThemedText>
+        <Champ
+          libelle={aUneCle ? 'Remplacer la clé (laisser vide pour la supprimer)' : 'Colle ta clé ici'}
+          value={cleApi}
+          onChangeText={setCleApi}
+          placeholder="sk-ant-..."
+          autoCapitalize="none"
+          autoCorrect={false}
+          secureTextEntry
+        />
+        <Bouton titre="Enregistrer la clé" secondaire onPress={sauverCle} />
+      </Carte>
       <ThemedText type="small" themeColor="textSecondary">
         Conseils généraux, ne remplace pas un avis médical. En cas de maladie, grossesse ou troubles alimentaires, demande l'avis d'un professionnel.
       </ThemedText>
