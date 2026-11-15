@@ -1,25 +1,45 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Barre, Bouton, Carte, Champ, Ecran, VERT } from '@/components/ui';
+import { BilanSemaine } from '@/components/bilan-semaine';
+import { CarteActivite } from '@/components/activite';
+import { CarteBoissons } from '@/components/boissons';
+import { CourbePoids } from '@/components/courbe-poids';
+import { Anneau, Barre, Bouton, C, Carte, Champ, Ecran, Texte } from '@/components/ui';
 import { moyenne7Jours, objectifMacros } from '@/lib/nutrition';
-import { aujourdhui, useStore } from '@/lib/store';
+import { aujourdhui, cleSeance, useStore } from '@/lib/store';
+import { semainesJusquaCible, serieJours, vitesseHebdo } from '@/lib/suivi';
+import { genererProgramme } from '@/lib/training';
+
+const CONSEILS = [
+  'Une source de protéines à chaque repas : elles calent et protègent tes muscles.',
+  'La moitié de l’assiette en légumes : beaucoup de volume pour peu de kcal.',
+  'Une cuillère d’huile, c’est 90 kcal. Mesure-la au lieu de verser à l’œil.',
+  'Bois un grand verre d’eau avant chaque repas : la soif se confond souvent avec la faim.',
+  'Vise 8 000 pas par jour : c’est le moyen le plus simple de brûler plus.',
+  'Les boissons sucrées et l’alcool font vite grimper les kcal sans caler.',
+  'Dors 7 à 8 h : le manque de sommeil augmente la faim le lendemain.',
+];
+
+function dateLongue(): string {
+  return new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
 
 export default function AujourdhuiScreen() {
-  const { pret, profil, repas, pesees, ajouterPesee } = useStore();
+  const { pret, profil, repas, pesees, ajouterPesee, seancesFaites } = useStore();
   const [poids, setPoids] = useState('');
 
   if (!pret) return <Ecran titre="Aujourd'hui">{null}</Ecran>;
 
   if (!profil) {
     return (
-      <Ecran titre="Bienvenue">
-        <Carte>
-          <ThemedText>
-            Remplis ton profil pour que je calcule tes besoins en kcal et que je prépare ton programme de sport sur 12 semaines.
-          </ThemedText>
+      <Ecran titre="Bienvenue" sousTitre="Appli Minceur">
+        <Carte accent={C.accent}>
+          <Texte type="gras">Prêt à commencer ?</Texte>
+          <Texte type="petit">
+            Remplis ton profil : je calcule tes besoins en kcal et je prépare ton programme de sport sur 12 semaines.
+          </Texte>
           <Bouton titre="Créer mon profil" onPress={() => router.navigate('/profil')} />
         </Carte>
       </Ecran>
@@ -30,58 +50,132 @@ export default function AujourdhuiScreen() {
   const jour = aujourdhui();
   const duJour = repas.filter((r) => r.date === jour);
   const total = duJour.reduce(
-    (t, r) => ({
-      kcal: t.kcal + r.kcal,
-      p: t.p + r.proteinesG,
-      l: t.l + r.lipidesG,
-      g: t.g + r.glucidesG,
-    }),
+    (t, r) => ({ kcal: t.kcal + r.kcal, p: t.p + r.proteinesG, l: t.l + r.lipidesG, g: t.g + r.glucidesG }),
     { kcal: 0, p: 0, l: 0, g: 0 },
   );
-  const restant = objectif.kcal - total.kcal;
+  const restant = Math.round(objectif.kcal - total.kcal);
   const moyenne = moyenne7Jours(pesees, jour);
+  const perdu = pesees.length > 0 ? pesees[0].poidsKg - (moyenne ?? profil.poidsKg) : 0;
+  const vitesse = vitesseHebdo(pesees, jour);
+  const semainesRestantes = semainesJusquaCible(moyenne ?? profil.poidsKg, profil.poidsCibleKg, vitesse);
+  const conseil = CONSEILS[new Date().getDate() % CONSEILS.length];
+
+  const semaineNum = Math.min(12, Math.max(1, Math.floor((Date.now() - new Date(profil.debutProgramme).getTime()) / (7 * 864e5)) + 1));
+  const semaine = genererProgramme({ niveau: profil.niveauSport, lieu: profil.lieuSport, joursParSemaine: profil.joursSport })[semaineNum - 1];
+
+  const serie = serieJours(repas, jour);
+  const faites = semaine.seances.filter((_, i) => seancesFaites.includes(cleSeance(profil.debutProgramme, semaineNum, i))).length;
 
   const peser = () => {
     const v = Number(poids.replace(',', '.'));
     if (v >= 35 && v <= 300) {
       ajouterPesee({ date: jour, poidsKg: v });
       setPoids('');
-    }
+    } else Alert.alert('Pesée', 'Entre ton poids en kg, par exemple 88,5.');
   };
 
   return (
-    <Ecran titre="Aujourd'hui">
-      <Carte>
-        <View style={{ alignItems: 'center', gap: 4 }}>
-          <ThemedText type="title" style={{ color: restant >= 0 ? VERT : '#D9534F' }}>
-            {Math.abs(Math.round(restant))}
-          </ThemedText>
-          <ThemedText themeColor="textSecondary">{restant >= 0 ? 'kcal restantes' : 'kcal au-dessus de l’objectif'}</ThemedText>
+    <Ecran titre="Aujourd'hui" sousTitre={dateLongue()}>
+      {serie >= 2 && (
+        <View style={{ alignSelf: 'flex-start', flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: C.backgroundElement, borderColor: C.orange, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+          <Texte type="gras" couleur={C.orange}>
+            🔥 {serie} jours de suite
+          </Texte>
+          <Texte type="petit">à noter tes repas</Texte>
         </View>
-        <Barre libelle="Calories" valeur={total.kcal} cible={objectif.kcal} unite="kcal" />
-        <Barre libelle="Protéines" valeur={total.p} cible={objectif.proteinesG} unite="g" />
-        <Barre libelle="Lipides" valeur={total.l} cible={objectif.lipidesG} unite="g" />
-        <Barre libelle="Glucides" valeur={total.g} cible={objectif.glucidesG} unite="g" />
-        <Bouton titre="Ajouter un repas" onPress={() => router.navigate('/repas')} />
+      )}
+      <BilanSemaine jour={jour} />
+      <Carte>
+        <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+          <Anneau valeur={total.kcal} cible={objectif.kcal}>
+            <Texte type="grosChiffre" couleur={restant >= 0 ? C.text : C.danger}>
+              {Math.abs(restant)}
+            </Texte>
+            <Texte type="label">{restant >= 0 ? 'KCAL RESTANTES' : 'KCAL EN TROP'}</Texte>
+          </Anneau>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+          <View style={{ alignItems: 'center' }}>
+            <Texte type="chiffre">{Math.round(total.kcal)}</Texte>
+            <Texte type="label">MANGÉES</Texte>
+          </View>
+          <View style={{ alignItems: 'center' }}>
+            <Texte type="chiffre" couleur={C.accent}>
+              {objectif.kcal}
+            </Texte>
+            <Texte type="label">OBJECTIF</Texte>
+          </View>
+        </View>
       </Carte>
 
       <Carte>
-        <ThemedText type="smallBold">Poids</ThemedText>
-        <ThemedText type="small">
-          Actuel : {profil.poidsKg} kg · Moyenne 7 jours : {moyenne ? moyenne.toFixed(1) : '–'} kg · Objectif : {profil.poidsCibleKg} kg
-        </ThemedText>
-        <Champ libelle="Pesée du jour (kg)" keyboardType="decimal-pad" value={poids} onChangeText={setPoids} placeholder={String(profil.poidsKg)} />
-        <Bouton titre="Enregistrer la pesée" onPress={peser} secondaire />
-        <ThemedText type="small" themeColor="textSecondary">
-          Pèse-toi le matin à jeun. Le poids varie de 1 à 2 kg d'un jour à l'autre (eau, sel) : c'est la moyenne sur 7 jours qui compte.
-        </ThemedText>
+        <View style={{ flexDirection: 'row', gap: 14 }}>
+          <Barre libelle="Protéines" valeur={total.p} cible={objectif.proteinesG} unite="g" couleur={C.orange} />
+          <Barre libelle="Glucides" valeur={total.g} cible={objectif.glucidesG} unite="g" couleur={C.cyan} />
+          <Barre libelle="Lipides" valeur={total.l} cible={objectif.lipidesG} unite="g" couleur={C.jaune} />
+        </View>
+      </Carte>
+
+      <CarteBoissons jour={jour} />
+      <CarteActivite jour={jour} />
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flex: 1 }}>
+          <Bouton titre="+ Repas" onPress={() => router.navigate('/repas')} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Bouton titre="Coach IA" couleur={C.orange} onPress={() => router.navigate('/coach')} />
+        </View>
+      </View>
+
+      <Carte>
+        <Texte type="label">SÉANCE · SEMAINE {semaineNum}/12</Texte>
+        <Texte type="gras">{semaine.bloc}</Texte>
+        <Texte type="petit">
+          {semaine.seances.length} séances cette semaine : {semaine.seances.map((s) => s.titre).join(', ')}.
+        </Texte>
+        <Barre libelle="Séances faites" valeur={faites} cible={semaine.seances.length} unite="" couleur={C.cyan} plusEstMieux />
+        <Bouton titre="Voir le programme" secondaire onPress={() => router.navigate('/sport')} />
       </Carte>
 
       <Carte>
-        <ThemedText type="smallBold">Conseil du jour</ThemedText>
-        <ThemedText type="small">
-          Mets une source de protéines et des légumes dans chaque repas : la moitié de l'assiette en légumes, un quart en protéines, un quart en féculents.
-        </ThemedText>
+        <Texte type="label">POIDS</Texte>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View>
+            <Texte type="chiffre">{moyenne ? moyenne.toFixed(1).replace('.', ',') : profil.poidsKg} kg</Texte>
+            <Texte type="petit">moyenne 7 jours</Texte>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Texte type="chiffre" couleur={perdu > 0 ? C.accent : C.text}>
+              {perdu > 0 ? `−${perdu.toFixed(1).replace('.', ',')}` : '0'} kg
+            </Texte>
+            <Texte type="petit">objectif {profil.poidsCibleKg} kg</Texte>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end' }}>
+          <View style={{ flex: 1 }}>
+            <Champ keyboardType="decimal-pad" value={poids} onChangeText={setPoids} placeholder={`Pesée du jour (${profil.poidsKg})`} />
+          </View>
+          <Bouton titre="OK" secondaire onPress={peser} />
+        </View>
+        {vitesse !== null && (
+          <Texte type="petit" couleur={vitesse < 0 ? C.accent : C.text}>
+            {vitesse < -0.05
+              ? `Tu perds environ ${(-vitesse).toFixed(1).replace('.', ',')} kg par semaine.`
+              : vitesse > 0.05
+                ? `Ton poids monte d’environ ${vitesse.toFixed(1).replace('.', ',')} kg par semaine ces 4 dernières semaines.`
+                : 'Ton poids est stable ces 4 dernières semaines.'}
+            {semainesRestantes ? ` À ce rythme, objectif atteint dans environ ${semainesRestantes} semaine${semainesRestantes > 1 ? 's' : ''}.` : ''}
+          </Texte>
+        )}
+        <CourbePoids pesees={pesees} cible={profil.poidsCibleKg} aujourdhui={jour} />
+      </Carte>
+
+      <Carte accent={C.bordure}>
+        <Texte type="label" couleur={C.orange}>
+          CONSEIL DU JOUR
+        </Texte>
+        <Texte>{conseil}</Texte>
       </Carte>
     </Ecran>
   );

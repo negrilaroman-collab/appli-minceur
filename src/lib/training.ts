@@ -25,7 +25,7 @@ export interface Semaine {
 const EXOS: Record<Lieu, { bas: string[]; haut: string[]; tronc: string[] }> = {
   maison: {
     bas: ['Squat au poids du corps', 'Fentes alternées', 'Pont fessier'],
-    haut: ['Pompes (genoux si besoin)', 'Dips sur chaise', 'Superman au sol'],
+    haut: ['Pompes (genoux si besoin)', 'Rowing avec une serviette ou sous une table', 'Superman au sol'],
     tronc: ['Gainage planche', 'Mountain climbers'],
   },
   halteres: {
@@ -47,18 +47,30 @@ function blocDeSemaine(n: number): Semaine['bloc'] {
   return 'Intensification';
 }
 
-function parametres(bloc: Semaine['bloc'], n: number, niveau: Niveau) {
-  const bonus = niveau === 'avance' ? 1 : 0;
+// Exercices tenus en secondes, pas en répétitions.
+const EN_SECONDES = new Set(['Gainage planche', 'Mountain climbers']);
+
+function parametres(bloc: Semaine['bloc'], n: number, niveau: Niveau, lieu: Lieu) {
+  // Intermédiaire : +1 série après les 4 premières semaines ; avancé : +1 série partout et repos plus courts.
+  const bonus = niveau === 'avance' ? 1 : niveau === 'intermediaire' && bloc !== 'Fondations' && bloc !== 'Allègement' ? 1 : 0;
+  const moinsRepos = niveau === 'avance' ? 15 : 0;
+  // Au poids du corps, on progresse en ajoutant des répétitions (moins de reps rendrait l'effort plus facile).
+  const poidsDuCorps = lieu === 'maison';
   switch (bloc) {
     case 'Fondations':
       // +1 série en semaine 3-4 (progression de volume ≤ 10 %/sem en moyenne).
-      return { series: 2 + (n >= 3 ? 1 : 0) + bonus, reps: '10-15', reposS: 60 };
+      return { series: 2 + (n >= 3 ? 1 : 0) + bonus, reps: '10-15', secondes: '20-30 s', reposS: 60 - moinsRepos };
     case 'Allègement':
-      return { series: 2, reps: '10-12', reposS: 60 };
+      return { series: 2, reps: '10-12', secondes: '20-30 s', reposS: 60 };
     case 'Développement':
-      return { series: 3 + (n === 8 ? 1 : 0) + bonus, reps: '8-12', reposS: 75 };
+      return { series: 3 + (n === 8 ? 1 : 0) + bonus, reps: poidsDuCorps ? '12-20' : '8-12', secondes: '30-45 s', reposS: 75 - moinsRepos };
     case 'Intensification':
-      return { series: 3 + (n >= 11 ? 1 : 0) + bonus, reps: '6-10', reposS: 90 };
+      return {
+        series: 3 + (n >= 11 ? 1 : 0) + bonus,
+        reps: poidsDuCorps ? '15-25, descente lente (3 s)' : '6-10',
+        secondes: '40-60 s',
+        reposS: 90 - moinsRepos,
+      };
   }
 }
 
@@ -74,27 +86,27 @@ export function genererProgramme(opts: {
 
   for (let n = 1; n <= 12; n++) {
     const bloc = blocDeSemaine(n);
-    const p = parametres(bloc, n, opts.niveau);
-    const ex = (noms: string[]): Exercice[] => noms.map((nom) => ({ nom, ...p }));
+    const p = parametres(bloc, n, opts.niveau, opts.lieu);
+    const ex = (noms: string[]): Exercice[] =>
+      noms.map((nom) => ({ nom, series: p.series, reps: EN_SECONDES.has(nom) ? p.secondes : p.reps, reposS: p.reposS }));
     const seances: Seance[] = [];
 
     const splitHautBas = bloc !== 'Fondations' && bloc !== 'Allègement' && muscu >= 3;
-    const nbMuscu = bloc === 'Allègement' ? Math.min(2, muscu) : bloc === 'Fondations' ? Math.min(3, muscu) : muscu;
+    // Semaine allégée : on garde au moins une marche, sans dépasser le nombre de jours choisi.
+    const nbMuscu = bloc === 'Allègement' ? Math.min(2, muscu, jours - 1) : bloc === 'Fondations' ? Math.min(3, muscu) : muscu;
+    const corpsEntier = (): Seance => ({ titre: 'Corps entier', exercices: ex([e.bas[0], e.haut[0], e.bas[1], e.haut[1], e.tronc[0]]) });
+    const haut = (): Seance => ({ titre: 'Haut du corps', exercices: ex([...e.haut, e.tronc[0]]) });
+    const bas = (): Seance => ({ titre: 'Bas du corps', exercices: ex([...e.bas, e.tronc[1]]) });
 
     for (let i = 0; i < nbMuscu; i++) {
-      if (splitHautBas) {
-        const haut = i % 2 === 0;
-        seances.push({
-          titre: haut ? 'Haut du corps' : 'Bas du corps',
-          exercices: ex(haut ? [...e.haut, e.tronc[0]] : [...e.bas, e.tronc[1]]),
-        });
-      } else {
-        seances.push({ titre: 'Corps entier', exercices: ex([e.bas[0], e.haut[0], e.bas[1], e.haut[1], e.tronc[0]]) });
-      }
+      if (!splitHautBas) seances.push(corpsEntier());
+      // 3 jours : bas / haut / corps entier, pour équilibrer jambes et haut du corps.
+      else if (nbMuscu === 3) seances.push([bas, haut, corpsEntier][i]());
+      else seances.push(i % 2 === 0 ? haut() : bas());
     }
 
     const cardioRestant = jours - nbMuscu;
-    for (let i = 0; i < Math.max(cardioRestant, bloc === 'Allègement' ? 1 : 0); i++) {
+    for (let i = 0; i < cardioRestant; i++) {
       const intervalles = (bloc === 'Développement' && i === 1) || (bloc === 'Intensification' && i >= 1);
       seances.push({
         titre: intervalles ? 'Cardio intervalles' : 'Cardio zone 2',

@@ -14,6 +14,8 @@ export interface Profil {
   poidsCibleKg: number;
   activite: NiveauActivite;
   rythme: Rythme;
+  /** Correction en kcal décidée lors des bilans de la semaine (0 par défaut). */
+  ajustementKcal?: number;
 }
 
 export const FACTEURS_ACTIVITE: Record<NiveauActivite, number> = {
@@ -58,9 +60,10 @@ export function plancherKcal(p: Profil): number {
 
 export function objectifKcal(p: Profil): number {
   const tdee = depenseTotale(p);
-  if (p.poidsCibleKg >= p.poidsKg) return tdee; // maintien
+  // maintien (l'ajustement des bilans s'applique aussi, sinon accepter une proposition ne changerait rien)
+  if (p.poidsCibleKg >= p.poidsKg) return p.ajustementKcal ? Math.round(Math.max(tdee + p.ajustementKcal, plancherKcal(p)) / 10) * 10 : tdee;
   const deficit = Math.min(tdee * DEFICIT_PAR_RYTHME[p.rythme], DEFICIT_MAX_KCAL);
-  const cible = Math.max(tdee - deficit, plancherKcal(p));
+  const cible = Math.max(tdee - deficit + (p.ajustementKcal ?? 0), plancherKcal(p));
   return Math.round(cible / 10) * 10;
 }
 
@@ -78,8 +81,9 @@ export function imc(p: Pick<Profil, 'poidsKg' | 'tailleCm'>): number {
 
 export function objectifMacros(p: Profil): Macros {
   const kcal = objectifKcal(p);
-  // 1,8 g/kg ; si IMC > 30, on se base sur le poids cible pour ne pas surestimer.
-  const poidsRef = imc(p) > 30 ? p.poidsCibleKg : p.poidsKg;
+  // 1,8 g/kg du poids « de référence » : le poids actuel, plafonné au poids correspondant à un IMC de 25
+  // (évite des quantités énormes en cas de surpoids, sans saut brutal ni dépendance à la cible).
+  const poidsRef = Math.min(p.poidsKg, 25 * (p.tailleCm / 100) ** 2);
   const proteinesG = Math.round(1.8 * poidsRef);
   const lipidesG = Math.round(Math.max((kcal * 0.3) / 9, 0.6 * p.poidsKg));
   const glucidesG = Math.max(0, Math.round((kcal - proteinesG * 4 - lipidesG * 9) / 4));

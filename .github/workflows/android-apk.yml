@@ -1,0 +1,73 @@
+# Construit l'APK Android et le publie dans les Releases GitHub (tag "apk").
+name: APK Android
+
+on:
+  push:
+    branches: [main, photo-kcal]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('package-lock.json', 'app.json') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Tests et types
+        run: |
+          npm test
+          npx tsc --noEmit
+
+      - name: Générer le projet Android
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Construire l'APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+
+      - name: Renommer l'APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk appli-minceur.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appli-minceur-apk
+          path: appli-minceur.apk
+
+      - name: Publier dans les Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk --yes --cleanup-tag || true
+          gh release create apk appli-minceur.apk \
+            --title "Appli Minceur (dernière version)" \
+            --notes "APK construit depuis ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). Ouvre ce fichier sur ton téléphone Android pour l'installer." \
+            --prerelease --target "$GITHUB_SHA"
