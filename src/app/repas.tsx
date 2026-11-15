@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 
 import { EstimationRepas } from '@/components/estimation-repas';
 import { Bouton, C, Carte, Champ, Choix, Ecran, Segments, Texte } from '@/components/ui';
@@ -48,6 +48,25 @@ export default function RepasScreen() {
       : new Date(`${jour}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const duJour = repas.filter((r) => r.date === jour);
   const totalJour = duJour.reduce((s, r) => s + r.kcal, 0);
+
+  // Derniers repas différents (par nom), du plus récent au plus ancien.
+  const recents: Repas[] = [];
+  for (const r of [...repas].reverse()) {
+    if (recents.length >= 10) break;
+    if (!recents.some((x) => x.nom.toLowerCase() === r.nom.toLowerCase())) recents.push(r);
+  }
+  const libelleMoment = MOMENTS.find((m) => m.valeur === moment)?.texte.toLowerCase();
+  const refaire = (r: Repas) =>
+    Alert.alert('Refaire ce repas ?', `${r.nom} (${r.kcal} kcal) au ${libelleMoment}, ${libelleJour}.`, [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Ajouter',
+        onPress: () => {
+          const { id: _id, date: _d, moment: _m, ...reste } = r;
+          ajouterRepas({ ...reste, date: jour, moment });
+        },
+      },
+    ]);
 
   const ajouterManuel = () => {
     if (!nom.trim() || n(kcal) === 0) {
@@ -109,6 +128,27 @@ export default function RepasScreen() {
           { valeur: 'manuel', texte: 'À la main' },
         ]}
       />
+
+      {recents.length > 0 && (
+        <View style={{ gap: 6 }}>
+          <Texte type="label">REFAIRE UN REPAS RÉCENT</Texte>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {recents.map((r) => (
+              <Pressable
+                key={r.id}
+                onPress={() => refaire(r)}
+                style={{ backgroundColor: C.backgroundElement, borderColor: C.bordure, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8, maxWidth: 200 }}>
+                <Texte type="gras" style={{ fontSize: 14 }} >
+                  {r.nom.length > 28 ? `${r.nom.slice(0, 27)}…` : r.nom}
+                </Texte>
+                <Texte type="petit" couleur={C.accent}>
+                  + {r.kcal} kcal
+                </Texte>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {mode !== 'manuel' ? (
         <EstimationRepas key={mode} mode={mode} onValider={(r) => ajouterRepas({ date: jour, moment, ...r })} />

@@ -61,6 +61,7 @@ export default function ProfilScreen() {
     lieuSport: lieu,
     joursSport: Math.min(6, Math.max(2, nombre(jours) || 3)),
     debutProgramme: profil?.debutProgramme ?? aujourdhui(),
+    ajustementKcal: profil?.ajustementKcal,
   };
   const valide =
     brouillon.age >= 16 && brouillon.age <= 100 && brouillon.tailleCm >= 120 && brouillon.tailleCm <= 230 &&

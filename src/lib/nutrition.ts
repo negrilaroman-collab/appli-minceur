@@ -14,6 +14,8 @@ export interface Profil {
   poidsCibleKg: number;
   activite: NiveauActivite;
   rythme: Rythme;
+  /** Correction en kcal décidée lors des bilans de la semaine (0 par défaut). */
+  ajustementKcal?: number;
 }
 
 export const FACTEURS_ACTIVITE: Record<NiveauActivite, number> = {
@@ -60,7 +62,7 @@ export function objectifKcal(p: Profil): number {
   const tdee = depenseTotale(p);
   if (p.poidsCibleKg >= p.poidsKg) return tdee; // maintien
   const deficit = Math.min(tdee * DEFICIT_PAR_RYTHME[p.rythme], DEFICIT_MAX_KCAL);
-  const cible = Math.max(tdee - deficit, plancherKcal(p));
+  const cible = Math.max(tdee - deficit + (p.ajustementKcal ?? 0), plancherKcal(p));
   return Math.round(cible / 10) * 10;
 }
 

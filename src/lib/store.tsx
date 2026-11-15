@@ -28,10 +28,19 @@ export interface Pesee {
   poidsKg: number;
 }
 
+export interface BilanEnregistre {
+  date: string;
+  kcalAvant: number;
+  kcalApres: number;
+  perteKg: number | null;
+}
+
 interface Donnees {
   profil: ProfilComplet | null;
   repas: Repas[];
   pesees: Pesee[];
+  bilans: BilanEnregistre[];
+  seancesFaites: string[]; // clés « début du cycle:semaine:séance »
 }
 
 interface Store extends Donnees {
@@ -40,10 +49,14 @@ interface Store extends Donnees {
   ajouterRepas: (r: Omit<Repas, 'id'>) => void;
   supprimerRepas: (id: string) => void;
   ajouterPesee: (p: Pesee) => void;
+  enregistrerBilan: (b: BilanEnregistre) => void;
+  basculerSeance: (cle: string) => void;
 }
 
+export const cleSeance = (debutProgramme: string, semaine: number, seance: number) => `${debutProgramme}:${semaine}:${seance}`;
+
 const CLE = 'appli-minceur/v1';
-const VIDE: Donnees = { profil: null, repas: [], pesees: [] };
+const VIDE: Donnees = { profil: null, repas: [], pesees: [], bilans: [], seancesFaites: [] };
 const Ctx = createContext<Store | null>(null);
 
 export function aujourdhui(): string {
@@ -83,6 +96,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...d,
           pesees: [...d.pesees.filter((x) => x.date !== p.date), p].sort((a, b) => a.date.localeCompare(b.date)),
           profil: d.profil ? { ...d.profil, poidsKg: p.poidsKg } : d.profil,
+        })),
+      enregistrerBilan: (b) =>
+        setDonnees((d) => ({
+          ...d,
+          bilans: [...d.bilans, b],
+          profil: d.profil ? { ...d.profil, ajustementKcal: (d.profil.ajustementKcal ?? 0) + (b.kcalApres - b.kcalAvant) } : d.profil,
+        })),
+      basculerSeance: (cle) =>
+        setDonnees((d) => ({
+          ...d,
+          seancesFaites: d.seancesFaites.includes(cle) ? d.seancesFaites.filter((c) => c !== cle) : [...d.seancesFaites, cle],
         })),
     }),
     [donnees, pret],

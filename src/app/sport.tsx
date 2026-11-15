@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { Bouton, C, Carte, Ecran, Texte } from '@/components/ui';
-import { aujourdhui, useStore } from '@/lib/store';
+import { aujourdhui, cleSeance, useStore } from '@/lib/store';
 import { genererProgramme } from '@/lib/training';
 
 function semaineCourante(debutISO: string): number {
@@ -12,7 +12,7 @@ function semaineCourante(debutISO: string): number {
 }
 
 export default function SportScreen() {
-  const { profil, enregistrerProfil } = useStore();
+  const { profil, enregistrerProfil, seancesFaites, basculerSeance } = useStore();
   const programme = useMemo(
     () => (profil ? genererProgramme({ niveau: profil.niveauSport, lieu: profil.lieuSport, joursParSemaine: profil.joursSport }) : []),
     [profil],
@@ -71,8 +71,11 @@ export default function SportScreen() {
         </Carte>
       )}
 
-      {semaine.seances.map((s, i) => (
-        <Carte key={i} accent={s.cardio ? C.bordure : undefined}>
+      {semaine.seances.map((s, i) => {
+        const cle = cleSeance(profil.debutProgramme, num, i);
+        const faite = seancesFaites.includes(cle);
+        return (
+        <Carte key={i} accent={faite ? C.accent : s.cardio ? C.bordure : undefined}>
           <Texte type="label" couleur={s.cardio ? C.cyan : C.orange}>
             SÉANCE {i + 1}
           </Texte>
@@ -89,8 +92,14 @@ export default function SportScreen() {
               </Texte>
             </View>
           ))}
+          <Bouton
+            titre={faite ? '✓ Séance faite' : 'J’ai fait cette séance'}
+            secondaire={!faite}
+            onPress={() => basculerSeance(cle)}
+          />
         </Carte>
-      ))}
+        );
+      })}
 
       <Carte>
         <Texte type="label">RÈGLE DE PROGRESSION</Texte>

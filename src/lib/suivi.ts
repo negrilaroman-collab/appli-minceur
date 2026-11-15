@@ -55,3 +55,80 @@ export function kcalParJour(repas: { date: string; kcal: number }[], finISO: str
   const jours = Array.from({ length: nbJours }, (_, i) => decalerJour(finISO, i - nbJours + 1));
   return jours.map((date) => ({ date, kcal: Math.round(repas.filter((r) => r.date === date).reduce((s, r) => s + r.kcal, 0)) }));
 }
+
+/** Nombre de jours d'affilée avec au moins un repas noté (jusqu'à aujourd'hui, ou hier si rien encore aujourd'hui). */
+export function serieJours(repas: { date: string }[], aujourdhuiISO: string): number {
+  const jours = new Set(repas.map((r) => r.date));
+  let d = jours.has(aujourdhuiISO) ? aujourdhuiISO : decalerJour(aujourdhuiISO, -1);
+  let n = 0;
+  while (jours.has(d)) {
+    n++;
+    d = decalerJour(d, -1);
+  }
+  return n;
+}
+
+/** Perte de poids (kg, positif = perte) des deux dernières semaines, d'après la tendance sur 7 jours. */
+export function pertesHebdo(pesees: { date: string; poidsKg: number }[], finISO: string): [number, number] | null {
+  const t = [0, 7, 14].map((k) => {
+    const fin = decalerJour(finISO, -k);
+    const fenetre = pesees.filter((p) => p.date > decalerJour(fin, -7) && p.date <= fin);
+    return fenetre.length ? fenetre.reduce((s, p) => s + p.poidsKg, 0) / fenetre.length : null;
+  });
+  if (t[0] === null || t[1] === null) return null;
+  const s0 = t[1] - t[0];
+  const s1 = t[2] === null ? s0 : t[2] - t[1];
+  return [Math.round(s1 * 100) / 100, Math.round(s0 * 100) / 100];
+}
+
+export interface Bilan {
+  date: string;
+  perteKg: number | null;
+  moyenneKcal: number | null; // moyenne des jours où des repas ont été notés
+  joursNotes: number;
+  kcalActuel: number;
+  kcalPropose: number;
+  message: string;
+}
+
+/**
+ * Bilan de la semaine. `ajuster` est la règle d'ajustement (ajusterObjectif) : on ne baisse pas l'objectif
+ * si la personne n'a pas noté assez de repas ou a mangé nettement au-dessus de son objectif.
+ */
+export function bilanSemaine(
+  pesees: { date: string; poidsKg: number }[],
+  repas: { date: string; kcal: number }[],
+  finISO: string,
+  kcalActuel: number,
+  ajuster: (pertes: [number, number]) => number,
+): Bilan {
+  const jours = kcalParJour(repas, finISO, 7).filter((j) => j.kcal > 0);
+  const moyenneKcal = jours.length ? Math.round(jours.reduce((s, j) => s + j.kcal, 0) / jours.length) : null;
+  const pertes = pertesHebdo(pesees, finISO);
+  const base = { date: finISO, perteKg: pertes ? pertes[1] : null, moyenneKcal, joursNotes: jours.length, kcalActuel };
+  const kg = (x: number) => `${Math.abs(x).toFixed(1).replace('.', ',')} kg`;
+
+  if (!pertes) {
+    return { ...base, kcalPropose: kcalActuel, message: 'Pas assez de pesées pour juger : pèse-toi au moins 2 fois par semaine, le matin à jeun.' };
+  }
+  const propose = ajuster(pertes);
+  const resultat = pertes[1] > 0.05 ? `Tu as perdu ${kg(pertes[1])} cette semaine.` : pertes[1] < -0.05 ? `Tu as pris ${kg(pertes[1])} cette semaine.` : 'Ton poids est stable cette semaine.';
+
+  if (propose < kcalActuel) {
+    if (jours.length < 4) {
+      return { ...base, kcalPropose: kcalActuel, message: `${resultat} Note tes repas au moins 4 jours sur 7 pour que je puisse ajuster ton objectif.` };
+    }
+    if (moyenneKcal !== null && moyenneKcal > kcalActuel + 150) {
+      return {
+        ...base,
+        kcalPropose: kcalActuel,
+        message: `${resultat} Tu as mangé en moyenne ${moyenneKcal} kcal, au-dessus de ton objectif : essaie d'abord de le respecter avant de le baisser.`,
+      };
+    }
+    return { ...base, kcalPropose: propose, message: `${resultat} C'est plus lent que prévu depuis 2 semaines : je te propose de baisser un peu ton objectif.` };
+  }
+  if (propose > kcalActuel) {
+    return { ...base, kcalPropose: propose, message: `${resultat} C'est un peu trop rapide (risque de perdre du muscle) : je te propose de manger un peu plus.` };
+  }
+  return { ...base, kcalPropose: kcalActuel, message: `${resultat} C'est le bon rythme, on garde le même objectif. Bravo !` };
+}

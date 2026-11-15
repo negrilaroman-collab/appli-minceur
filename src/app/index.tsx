@@ -2,11 +2,12 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
+import { BilanSemaine } from '@/components/bilan-semaine';
 import { CourbePoids } from '@/components/courbe-poids';
 import { Anneau, Barre, Bouton, C, Carte, Champ, Ecran, Texte } from '@/components/ui';
 import { moyenne7Jours, objectifMacros } from '@/lib/nutrition';
-import { aujourdhui, useStore } from '@/lib/store';
-import { semainesJusquaCible, vitesseHebdo } from '@/lib/suivi';
+import { aujourdhui, cleSeance, useStore } from '@/lib/store';
+import { semainesJusquaCible, serieJours, vitesseHebdo } from '@/lib/suivi';
 import { genererProgramme } from '@/lib/training';
 
 const CONSEILS = [
@@ -24,7 +25,7 @@ function dateLongue(): string {
 }
 
 export default function AujourdhuiScreen() {
-  const { pret, profil, repas, pesees, ajouterPesee } = useStore();
+  const { pret, profil, repas, pesees, ajouterPesee, seancesFaites } = useStore();
   const [poids, setPoids] = useState('');
 
   if (!pret) return <Ecran titre="Aujourd'hui">{null}</Ecran>;
@@ -60,6 +61,9 @@ export default function AujourdhuiScreen() {
   const semaineNum = Math.min(12, Math.max(1, Math.floor((Date.now() - new Date(profil.debutProgramme).getTime()) / (7 * 864e5)) + 1));
   const semaine = genererProgramme({ niveau: profil.niveauSport, lieu: profil.lieuSport, joursParSemaine: profil.joursSport })[semaineNum - 1];
 
+  const serie = serieJours(repas, jour);
+  const faites = semaine.seances.filter((_, i) => seancesFaites.includes(cleSeance(profil.debutProgramme, semaineNum, i))).length;
+
   const peser = () => {
     const v = Number(poids.replace(',', '.'));
     if (v >= 35 && v <= 300) {
@@ -70,6 +74,15 @@ export default function AujourdhuiScreen() {
 
   return (
     <Ecran titre="Aujourd'hui" sousTitre={dateLongue()}>
+      {serie >= 2 && (
+        <View style={{ alignSelf: 'flex-start', flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: C.backgroundElement, borderColor: C.orange, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+          <Texte type="gras" couleur={C.orange}>
+            🔥 {serie} jours de suite
+          </Texte>
+          <Texte type="petit">à noter tes repas</Texte>
+        </View>
+      )}
+      <BilanSemaine jour={jour} semaineNum={semaineNum} />
       <Carte>
         <View style={{ alignItems: 'center', paddingVertical: 8 }}>
           <Anneau valeur={total.kcal} cible={objectif.kcal}>
@@ -116,6 +129,7 @@ export default function AujourdhuiScreen() {
         <Texte type="petit">
           {semaine.seances.length} séances cette semaine : {semaine.seances.map((s) => s.titre).join(', ')}.
         </Texte>
+        <Barre libelle="Séances faites" valeur={faites} cible={semaine.seances.length} unite="" couleur={C.cyan} />
         <Bouton titre="Voir le programme" secondaire onPress={() => router.navigate('/sport')} />
       </Carte>
 
