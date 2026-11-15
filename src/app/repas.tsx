@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
-import { PhotoRepas } from '@/components/photo-repas';
-import { ThemedText } from '@/components/themed-text';
-import { Bouton, Carte, Champ, Choix, Ecran } from '@/components/ui';
+import { EstimationRepas } from '@/components/estimation-repas';
+import { Bouton, C, Carte, Champ, Choix, Ecran, Segments, Texte } from '@/components/ui';
 import { aujourdhui, useStore, type Repas } from '@/lib/store';
 
 const MOMENTS: { valeur: Repas['moment']; texte: string }[] = [
@@ -13,11 +12,21 @@ const MOMENTS: { valeur: Repas['moment']; texte: string }[] = [
   { valeur: 'collation', texte: 'Collation' },
 ];
 
+function momentParDefaut(): Repas['moment'] {
+  const h = new Date().getHours();
+  if (h < 11) return 'petit-dej';
+  if (h < 15) return 'dejeuner';
+  if (h < 18) return 'collation';
+  return 'diner';
+}
+
+type Mode = 'photo' | 'texte' | 'manuel';
 const n = (s: string) => Math.max(0, Number(s.replace(',', '.')) || 0);
 
 export default function RepasScreen() {
   const { repas, ajouterRepas, supprimerRepas } = useStore();
-  const [moment, setMoment] = useState<Repas['moment']>('dejeuner');
+  const [moment, setMoment] = useState<Repas['moment']>(momentParDefaut());
+  const [mode, setMode] = useState<Mode>('photo');
   const [nom, setNom] = useState('');
   const [kcal, setKcal] = useState('');
   const [p, setP] = useState('');
@@ -26,8 +35,9 @@ export default function RepasScreen() {
 
   const jour = aujourdhui();
   const duJour = repas.filter((r) => r.date === jour);
+  const totalJour = duJour.reduce((s, r) => s + r.kcal, 0);
 
-  const ajouter = () => {
+  const ajouterManuel = () => {
     if (!nom.trim() || n(kcal) === 0) {
       Alert.alert('Repas incomplet', 'Indique au moins un nom et les kcal.');
       return;
@@ -41,36 +51,50 @@ export default function RepasScreen() {
   };
 
   return (
-    <Ecran titre="Repas">
-      <Choix libelle="Moment" valeur={moment} onChange={setMoment} options={MOMENTS} />
-      <PhotoRepas onValider={(r) => ajouterRepas({ date: jour, moment, ...r })} />
+    <Ecran titre="Repas" sousTitre={`${Math.round(totalJour)} kcal aujourd'hui`}>
+      <Choix valeur={moment} onChange={setMoment} options={MOMENTS} />
+      <Segments
+        valeur={mode}
+        onChange={setMode}
+        options={[
+          { valeur: 'photo', texte: 'Photo' },
+          { valeur: 'texte', texte: 'Décrire' },
+          { valeur: 'manuel', texte: 'À la main' },
+        ]}
+      />
 
-      <Carte>
-        <ThemedText type="smallBold">Ajouter à la main</ThemedText>
-        <Champ libelle="Aliment ou plat" value={nom} onChangeText={setNom} placeholder="Poulet riz brocolis" />
-        <Champ libelle="kcal" keyboardType="number-pad" value={kcal} onChangeText={setKcal} placeholder="550" />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <Champ libelle="Protéines (g)" keyboardType="number-pad" value={p} onChangeText={setP} />
+      {mode !== 'manuel' ? (
+        <EstimationRepas key={mode} mode={mode} onValider={(r) => ajouterRepas({ date: jour, moment, ...r })} />
+      ) : (
+        <Carte>
+          <Champ libelle="ALIMENT OU PLAT" value={nom} onChangeText={setNom} placeholder="Poulet riz brocolis" />
+          <Champ libelle="KCAL" keyboardType="number-pad" value={kcal} onChangeText={setKcal} placeholder="550" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Champ libelle="PROT. (G)" keyboardType="number-pad" value={p} onChangeText={setP} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Champ libelle="LIP. (G)" keyboardType="number-pad" value={l} onChangeText={setL} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Champ libelle="GLUC. (G)" keyboardType="number-pad" value={g} onChangeText={setG} />
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Champ libelle="Lipides (g)" keyboardType="number-pad" value={l} onChangeText={setL} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Champ libelle="Glucides (g)" keyboardType="number-pad" value={g} onChangeText={setG} />
-          </View>
-        </View>
-        <Bouton titre="Ajouter" onPress={ajouter} />
-      </Carte>
+          <Bouton titre="Ajouter" onPress={ajouterManuel} />
+        </Carte>
+      )}
 
       {MOMENTS.map((m) => {
         const liste = duJour.filter((r) => r.moment === m.valeur);
         if (liste.length === 0) return null;
         return (
           <Carte key={m.valeur}>
-            <ThemedText type="smallBold">
-              {m.texte} · {liste.reduce((s, r) => s + r.kcal, 0)} kcal
-            </ThemedText>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Texte type="label">{m.texte.toUpperCase()}</Texte>
+              <Texte type="label" couleur={C.accent}>
+                {liste.reduce((s, r) => s + r.kcal, 0)} KCAL
+              </Texte>
+            </View>
             {liste.map((r) => (
               <Pressable
                 key={r.id}
@@ -80,19 +104,16 @@ export default function RepasScreen() {
                     { text: 'Supprimer', style: 'destructive', onPress: () => supprimerRepas(r.id) },
                   ])
                 }>
-                <ThemedText type="small">
-                  {r.nom} · {r.kcal} kcal · P {r.proteinesG} / L {r.lipidesG} / G {r.glucidesG}
-                </ThemedText>
+                <Texte>{r.nom}</Texte>
+                <Texte type="petit">
+                  {r.kcal} kcal · P {r.proteinesG} g · G {r.glucidesG} g · L {r.lipidesG} g
+                </Texte>
               </Pressable>
             ))}
           </Carte>
         );
       })}
-      {duJour.length > 0 && (
-        <ThemedText type="small" themeColor="textSecondary">
-          Appui long sur un aliment pour le supprimer.
-        </ThemedText>
-      )}
+      {duJour.length > 0 && <Texte type="petit">Appui long sur un repas pour le supprimer.</Texte>}
     </Ecran>
   );
 }

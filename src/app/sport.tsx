@@ -2,8 +2,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { Bouton, Carte, Ecran } from '@/components/ui';
+import { Bouton, C, Carte, Ecran, Texte } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { genererProgramme } from '@/lib/training';
 
@@ -24,7 +23,7 @@ export default function SportScreen() {
     return (
       <Ecran titre="Sport">
         <Carte>
-          <ThemedText>Remplis ton profil pour générer ton programme de 12 semaines.</ThemedText>
+          <Texte>Remplis ton profil pour générer ton programme de 12 semaines.</Texte>
           <Bouton titre="Créer mon profil" onPress={() => router.navigate('/profil')} />
         </Carte>
       </Ecran>
@@ -36,39 +35,55 @@ export default function SportScreen() {
   const semaine = programme[num - 1];
 
   return (
-    <Ecran titre="Sport">
-      <ThemedText themeColor="textSecondary">
-        Semaine {num} sur 12 · Bloc {semaine.bloc}
-        {num === actuelle ? ' (cette semaine)' : ''}
-      </ThemedText>
+    <Ecran titre="Sport" sousTitre={`Semaine ${num}/12 · ${semaine.bloc}${num === actuelle ? ' · en cours' : ''}`}>
+      <View style={{ flexDirection: 'row', gap: 4 }}>
+        {programme.map((sem) => (
+          <View
+            key={sem.numero}
+            style={{
+              flex: 1,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: sem.numero === num ? C.accent : sem.numero < actuelle ? C.textSecondary : sem.bloc === 'Allègement' ? C.cyan : C.backgroundSelected,
+            }}
+          />
+        ))}
+      </View>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <View style={{ flex: 1 }}>
-          <Bouton titre="‹ Précédente" secondaire onPress={() => setChoisie(Math.max(1, num - 1))} />
+          <Bouton titre="‹ Préc." secondaire onPress={() => setChoisie(Math.max(1, num - 1))} />
         </View>
         <View style={{ flex: 1 }}>
-          <Bouton titre="Suivante ›" secondaire onPress={() => setChoisie(Math.min(12, num + 1))} />
+          <Bouton titre="Suiv. ›" secondaire onPress={() => setChoisie(Math.min(12, num + 1))} />
         </View>
       </View>
 
       {semaine.seances.map((s, i) => (
-        <Carte key={i}>
-          <ThemedText type="smallBold">
-            Séance {i + 1} · {s.titre}
-          </ThemedText>
-          {s.cardio && <ThemedText type="small">{s.cardio}</ThemedText>}
+        <Carte key={i} accent={s.cardio ? C.bordure : undefined}>
+          <Texte type="label" couleur={s.cardio ? C.cyan : C.orange}>
+            SÉANCE {i + 1}
+          </Texte>
+          <Texte type="chiffre">{s.titre}</Texte>
+          {s.cardio && <Texte>{s.cardio}</Texte>}
           {s.exercices.map((e) => (
-            <ThemedText key={e.nom} type="small">
-              {e.nom} : {e.series} × {e.reps} reps, repos {e.reposS} s
-            </ThemedText>
+            <View key={e.nom} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderTopWidth: 1, borderTopColor: C.bordure }}>
+              <View style={{ flex: 1 }}>
+                <Texte>{e.nom}</Texte>
+                <Texte type="petit">repos {e.reposS} s</Texte>
+              </View>
+              <Texte type="gras" couleur={C.accent}>
+                {e.series} × {e.reps}
+              </Texte>
+            </View>
           ))}
         </Carte>
       ))}
 
       <Carte>
-        <ThemedText type="smallBold">Règle de progression</ThemedText>
-        <ThemedText type="small">
+        <Texte type="label">RÈGLE DE PROGRESSION</Texte>
+        <Texte type="petit">
           Quand tu fais le haut de la fourchette de reps sur toutes les séries sans être à fond (difficulté 8/10 ou moins), augmente la charge ou passe à une variante plus dure à la séance suivante. Échauffe-toi 5 min avant chaque séance.
-        </ThemedText>
+        </Texte>
       </Carte>
     </Ecran>
   );
