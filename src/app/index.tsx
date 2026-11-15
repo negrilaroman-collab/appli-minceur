@@ -82,7 +82,7 @@ export default function AujourdhuiScreen() {
           <Texte type="petit">à noter tes repas</Texte>
         </View>
       )}
-      <BilanSemaine jour={jour} semaineNum={semaineNum} />
+      <BilanSemaine jour={jour} />
       <Carte>
         <View style={{ alignItems: 'center', paddingVertical: 8 }}>
           <Anneau valeur={total.kcal} cible={objectif.kcal}>

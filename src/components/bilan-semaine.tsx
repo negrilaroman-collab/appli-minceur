@@ -5,10 +5,10 @@ import { View } from 'react-native';
 import { Bouton, C, Carte, Texte } from '@/components/ui';
 import { ajusterObjectif, objectifKcal } from '@/lib/nutrition';
 import { cleSeance, useStore } from '@/lib/store';
-import { bilanSemaine, ecartJours } from '@/lib/suivi';
+import { bilanSemaine, decalerJour, ecartJours } from '@/lib/suivi';
 import { genererProgramme } from '@/lib/training';
 
-export function BilanSemaine({ jour, semaineNum }: { jour: string; semaineNum: number }) {
+export function BilanSemaine({ jour }: { jour: string }) {
   const { profil, pesees, repas, bilans, seancesFaites, enregistrerBilan } = useStore();
   const [ouvert, setOuvert] = useState(false);
   if (!profil) return null;
@@ -17,7 +17,20 @@ export function BilanSemaine({ jour, semaineNum }: { jour: string; semaineNum: n
   if (ecartJours(dernier, jour) < 7) return null;
 
   const kcal = objectifKcal(profil);
-  const b = bilanSemaine(pesees, repas, jour, kcal, (pertes) => ajusterObjectif(profil, kcal, pertes));
+  const b = bilanSemaine(pesees, repas, jour, kcal, (pertes) =>
+    // Objectif atteint (maintien) : on ne corrige que si le poids bouge nettement 2 semaines de suite.
+    profil.poidsCibleKg >= profil.poidsKg
+      ? pertes.every((x) => x < -0.3)
+        ? kcal - 125
+        : pertes.every((x) => x > 0.3)
+          ? kcal + 125
+          : kcal
+      : ajusterObjectif(profil, kcal, pertes));
+  // Objectif réellement obtenu après ajustement (arrondi à 10 kcal, plancher), pour afficher le bon chiffre.
+  const kcalPropose = objectifKcal({ ...profil, ajustementKcal: (profil.ajustementKcal ?? 0) + b.kcalPropose - kcal });
+  // Semaine du programme qui contient la veille : le bilan tombe souvent le 1er jour d'une nouvelle semaine,
+  // la « semaine en cours » afficherait alors toujours 0 séance.
+  const semaineNum = Math.min(12, Math.max(1, Math.floor(ecartJours(profil.debutProgramme, decalerJour(jour, -1)) / 7) + 1));
   const prevues = genererProgramme({ niveau: profil.niveauSport, lieu: profil.lieuSport, joursParSemaine: profil.joursSport })[semaineNum - 1]?.seances.length ?? 0;
   const faites = Array.from({ length: prevues }, (_, i) => cleSeance(profil.debutProgramme, semaineNum, i)).filter((c) => seancesFaites.includes(c)).length;
 
@@ -48,14 +61,14 @@ export function BilanSemaine({ jour, semaineNum }: { jour: string; semaineNum: n
       <Texte type="label" couleur={C.orange}>
         BILAN DE LA SEMAINE
       </Texte>
-      {ligne('Évolution du poids', b.perteKg === null ? '—' : `${b.perteKg > 0 ? '−' : '+'}${Math.abs(b.perteKg).toFixed(1).replace('.', ',')} kg`)}
+      {ligne('Évolution du poids', b.perteKg === null ? '—' : Math.abs(b.perteKg) < 0.05 ? '0 kg' : `${b.perteKg > 0 ? '−' : '+'}${Math.abs(b.perteKg).toFixed(1).replace('.', ',')} kg`)}
       {ligne('Moyenne mangée', b.moyenneKcal === null ? '—' : `${b.moyenneKcal} kcal / jour`)}
       {ligne('Jours notés', `${b.joursNotes} / 7`)}
-      {ligne('Séances faites (semaine en cours)', `${faites} / ${prevues}`)}
+      {ligne(`Séances faites (semaine ${semaineNum} du programme)`, `${faites} / ${prevues}`)}
       <Texte>{b.message}</Texte>
-      {b.kcalPropose !== kcal ? (
+      {kcalPropose !== kcal ? (
         <>
-          <Bouton titre={`Passer à ${b.kcalPropose} kcal par jour`} onPress={() => terminer(b.kcalPropose)} />
+          <Bouton titre={`Passer à ${kcalPropose} kcal par jour`} onPress={() => terminer(kcalPropose)} />
           <Bouton titre={`Garder ${kcal} kcal`} secondaire onPress={() => terminer(kcal)} />
         </>
       ) : (

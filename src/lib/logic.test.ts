@@ -74,3 +74,10 @@ test('programme : gainage en secondes, 2 jours respectés, intermédiaire ≠ d�
   const maison = genererProgramme({ niveau: 'debutant', lieu: 'maison', joursParSemaine: 3 });
   assert.ok(!maison[10].seances[0].exercices[0].reps.startsWith('6'));
 });
+
+test('ajustement des bilans : appliqué aussi en maintien', () => {
+  assert.equal(objectifKcal({ ...roman, ajustementKcal: -125 }), 2210);
+  const maintien = { ...roman, poidsCibleKg: 90 };
+  assert.equal(objectifKcal(maintien), 2914);
+  assert.equal(objectifKcal({ ...maintien, ajustementKcal: -125 }), 2790);
+});

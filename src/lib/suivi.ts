@@ -114,6 +114,12 @@ export function bilanSemaine(
   const propose = ajuster(pertes);
   const resultat = pertes[1] > 0.05 ? `Tu as perdu ${kg(pertes[1])} cette semaine.` : pertes[1] < -0.05 ? `Tu as pris ${kg(pertes[1])} cette semaine.` : 'Ton poids est stable cette semaine.';
 
+  // Avec une seule semaine de pesées, la perte inclut souvent de l'eau : on attend un 2e bilan avant d'ajuster.
+  const deuxSemaines = pesees.some((p) => p.date <= decalerJour(finISO, -14) && p.date > decalerJour(finISO, -21));
+  if (!deuxSemaines) {
+    return { ...base, kcalPropose: kcalActuel, message: `${resultat} Les premiers jours, une partie de la perte est de l'eau : on garde ton objectif et on ajustera si besoin la semaine prochaine.` };
+  }
+
   if (propose < kcalActuel) {
     if (jours.length < 4) {
       return { ...base, kcalPropose: kcalActuel, message: `${resultat} Note tes repas au moins 4 jours sur 7 pour que je puisse ajuster ton objectif.` };
@@ -125,7 +131,11 @@ export function bilanSemaine(
         message: `${resultat} Tu as mangé en moyenne ${moyenneKcal} kcal, au-dessus de ton objectif : essaie d'abord de le respecter avant de le baisser.`,
       };
     }
-    return { ...base, kcalPropose: propose, message: `${resultat} C'est plus lent que prévu depuis 2 semaines : je te propose de baisser un peu ton objectif.` };
+    return { ...base, kcalPropose: propose, message:
+        pertes[1] < -0.05
+          ? `${resultat} Ton poids monte : je te propose de baisser un peu ton objectif.`
+          : `${resultat} C'est plus lent que prévu depuis 2 semaines : je te propose de baisser un peu ton objectif.`,
+    };
   }
   if (propose > kcalActuel) {
     return { ...base, kcalPropose: propose, message: `${resultat} C'est un peu trop rapide (risque de perdre du muscle) : je te propose de manger un peu plus.` };

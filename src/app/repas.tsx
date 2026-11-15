@@ -55,9 +55,9 @@ export default function RepasScreen() {
     if (recents.length >= 10) break;
     if (!recents.some((x) => x.nom.toLowerCase() === r.nom.toLowerCase())) recents.push(r);
   }
-  const libelleMoment = MOMENTS.find((m) => m.valeur === moment)?.texte.toLowerCase();
+  const libelleMoment = moment === 'collation' ? 'en collation' : `au ${MOMENTS.find((m) => m.valeur === moment)?.texte.toLowerCase()}`;
   const refaire = (r: Repas) =>
-    Alert.alert('Refaire ce repas ?', `${r.nom} (${r.kcal} kcal) au ${libelleMoment}, ${libelleJour}.`, [
+    Alert.alert('Refaire ce repas ?', `${r.nom} (${r.kcal} kcal) ${libelleMoment}, ${libelleJour}.`, [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Ajouter',
@@ -107,7 +107,7 @@ export default function RepasScreen() {
                   <View style={{ height: `${ratio * 100}%`, backgroundColor: d.kcal > objectifKcal ? C.danger : C.accent }} />
                 </View>
                 <Texte type="petit" couleur={selection ? C.text : C.textSecondary}>
-                  {new Date(`${d.date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'narrow' }).toUpperCase()}
+                  {new Date(`${d.date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '')}
                 </Texte>
               </Pressable>
             );

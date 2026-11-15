@@ -27,8 +27,11 @@ export function CourbePoids({ pesees, cible, aujourdhui }: { pesees: { date: str
   const valeurs = pts.flatMap((p) => [p.poidsKg, p.tendanceKg]);
   let min = Math.min(...valeurs);
   let max = Math.max(...valeurs);
-  const cibleVisible = cible > 0 && cible >= min - 3;
-  if (cibleVisible) min = Math.min(min, cible);
+  const cibleVisible = pts.length > 0 && cible > 0 && cible >= min - 3 && cible <= max + 3;
+  if (cibleVisible) {
+    min = Math.min(min, cible);
+    max = Math.max(max, cible);
+  }
   if (max - min < 2) {
     const milieu = (max + min) / 2;
     min = milieu - 1;
@@ -40,7 +43,8 @@ export function CourbePoids({ pesees, cible, aujourdhui }: { pesees: { date: str
   const y = (kg: number) => MARGE.haut + ((max - kg) / (max - min)) * h;
   const ligne = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.date).toFixed(1)},${y(p.tendanceKg).toFixed(1)}`).join(' ');
   const graduations = [max, (max + min) / 2, min];
-  const court = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  const court = (iso: string) =>
+    new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', ...(duree > 330 ? { year: '2-digit' } : {}) });
 
   return (
     <View style={{ gap: 8 }}>
@@ -53,6 +57,9 @@ export function CourbePoids({ pesees, cible, aujourdhui }: { pesees: { date: str
           { valeur: 'tout', texte: 'Tout' },
         ]}
       />
+      {pts.length === 0 ? (
+        <Texte type="petit">Aucune pesée sur cette période : choisis « Tout » pour voir tes anciennes pesées.</Texte>
+      ) : (
       <View onLayout={(e) => setLargeur(e.nativeEvent.layout.width)} style={{ height: H }}>
         {largeur > 0 && (
           <Svg width={largeur} height={H}>
@@ -85,6 +92,7 @@ export function CourbePoids({ pesees, cible, aujourdhui }: { pesees: { date: str
           </Svg>
         )}
       </View>
+      )}
       <Texte type="petit">Points gris : tes pesées. Ligne verte : ta tendance (moyenne sur 7 jours), qui gomme les variations d’eau d’un jour à l’autre.</Texte>
     </View>
   );

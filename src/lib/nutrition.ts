@@ -60,7 +60,8 @@ export function plancherKcal(p: Profil): number {
 
 export function objectifKcal(p: Profil): number {
   const tdee = depenseTotale(p);
-  if (p.poidsCibleKg >= p.poidsKg) return tdee; // maintien
+  // maintien (l'ajustement des bilans s'applique aussi, sinon accepter une proposition ne changerait rien)
+  if (p.poidsCibleKg >= p.poidsKg) return p.ajustementKcal ? Math.round(Math.max(tdee + p.ajustementKcal, plancherKcal(p)) / 10) * 10 : tdee;
   const deficit = Math.min(tdee * DEFICIT_PAR_RYTHME[p.rythme], DEFICIT_MAX_KCAL);
   const cible = Math.max(tdee - deficit + (p.ajustementKcal ?? 0), plancherKcal(p));
   return Math.round(cible / 10) * 10;

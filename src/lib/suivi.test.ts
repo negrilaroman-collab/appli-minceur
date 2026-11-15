@@ -43,3 +43,10 @@ test('bilan : perte lente mais repas au-dessus de l’objectif → on ne baisse 
   const b3 = bilanSemaine([], repas, '2026-11-15', 2330, () => 2205);
   assert.equal(b3.perteKg, null);
 });
+
+test('bilan : une seule semaine de pesées → pas d’ajustement', () => {
+  const pesees = Array.from({ length: 8 }, (_, i) => ({ date: decalerJour('2026-11-08', i), poidsKg: 90 - i * 0.2 }));
+  const b = bilanSemaine(pesees, [], '2026-11-15', 2330, () => 2455);
+  assert.equal(b.kcalPropose, 2330);
+  assert.match(b.message, /eau/);
+});
