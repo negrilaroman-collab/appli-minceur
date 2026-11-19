@@ -79,35 +79,60 @@ export function lireReponse(json: any): { texte: string; analyse: AnalysePhoto }
   return { texte, analyse: nettoyerAnalyse(brut) };
 }
 
-/** Appelle Gemini avec repli sur le modèle suivant si un modèle est absent (404). Renvoie le JSON brut. */
-export async function appelerGemini(apiKey: string, corps: unknown, fetchFn: typeof fetch = fetch): Promise<any> {
+/** Erreurs passagères côté Google (surcharge, panne courte) : on réessaie. */
+const PASSAGERES = [500, 502, 503, 504, 529];
+/** Attente avant chaque nouvel essai sur un même modèle (ms). */
+export const DELAIS_REESSAI_MS = [2000];
+
+export type Attente = (ms: number) => Promise<void>;
+const dormir: Attente = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Appelle Gemini. Si un modèle est absent (404), surchargé (503…) ou à court de quota (429),
+ * on réessaie puis on passe au modèle suivant. Renvoie le JSON brut.
+ */
+export async function appelerGemini(
+  apiKey: string,
+  corps: unknown,
+  fetchFn: typeof fetch = fetch,
+  attendre: Attente = dormir,
+): Promise<any> {
   const texteCorps = JSON.stringify(corps);
   let derniere = '';
+  let surcharge = false;
+  let quota = false;
   for (const modele of MODELES_GEMINI) {
-    let rep: Response;
-    try {
-      rep = await fetchFn(URL(modele), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: texteCorps,
-      });
-    } catch {
-      throw new ErreurAnalyse('Pas de connexion internet.');
-    }
-    if (rep.status === 404) {
+    for (let essai = 0; ; essai++) {
+      let rep: Response;
+      try {
+        rep = await fetchFn(URL(modele), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: texteCorps,
+        });
+      } catch {
+        throw new ErreurAnalyse('Pas de connexion internet.');
+      }
+      if (rep.ok) return rep.json();
+      if (rep.status === 400 || rep.status === 401 || rep.status === 403) {
+        const txt = await rep.text();
+        if (/API key|API_KEY|permission/i.test(txt)) throw new ErreurAnalyse('Clé Gemini refusée : vérifie-la dans l’onglet Profil.');
+        if (/location|region|not supported/i.test(txt)) throw new ErreurAnalyse('Gemini gratuit n’est pas disponible dans ton pays.');
+        throw new ErreurAnalyse(`Requête refusée (${rep.status}).`);
+      }
+      if (PASSAGERES.includes(rep.status) && essai < DELAIS_REESSAI_MS.length) {
+        await attendre(DELAIS_REESSAI_MS[essai]);
+        continue; // même modèle, après une petite pause
+      }
+      if (PASSAGERES.includes(rep.status)) surcharge = true;
+      else if (rep.status === 429) quota = true;
+      else if (rep.status !== 404) throw new ErreurAnalyse(`Erreur du service Gemini (${rep.status}). Réessaie.`);
       derniere = modele;
-      continue; // modèle indisponible : on essaie le suivant
+      break; // modèle suivant
     }
-    if (rep.status === 400 || rep.status === 401 || rep.status === 403) {
-      const txt = await rep.text();
-      if (/API key|API_KEY|permission/i.test(txt)) throw new ErreurAnalyse('Clé Gemini refusée : vérifie-la dans l’onglet Profil.');
-      if (/location|region|not supported/i.test(txt)) throw new ErreurAnalyse('Gemini gratuit n’est pas disponible dans ton pays.');
-      throw new ErreurAnalyse(`Requête refusée (${rep.status}).`);
-    }
-    if (rep.status === 429) throw new ErreurAnalyse('Quota gratuit du jour atteint, réessaie plus tard.');
-    if (!rep.ok) throw new ErreurAnalyse(`Erreur du service (${rep.status}). Réessaie.`);
-    return rep.json();
   }
+  if (surcharge) throw new ErreurAnalyse('Gemini est surchargé en ce moment (erreur 503, ça ne vient pas de toi). Réessaie dans une minute.');
+  if (quota) throw new ErreurAnalyse('Quota gratuit du jour atteint, réessaie plus tard.');
   throw new ErreurAnalyse(`Aucun modèle Gemini disponible (dernier essayé : ${derniere}).`);
 }
 
@@ -115,8 +140,9 @@ export async function analyserGemini(
   apiKey: string,
   historique: TourGemini[],
   fetchFn: typeof fetch = fetch,
+  attendre?: Attente,
 ): Promise<{ analyse: AnalysePhoto; historique: TourGemini[] }> {
-  const { texte, analyse } = lireReponse(await appelerGemini(apiKey, corpsRequete(historique), fetchFn));
+  const { texte, analyse } = lireReponse(await appelerGemini(apiKey, corpsRequete(historique), fetchFn, attendre));
   return { analyse, historique: [...historique, { role: 'model', parts: [{ text: texte }] }] };
 }
 
@@ -126,8 +152,9 @@ export async function discuterGemini(
   systeme: string,
   historique: TourGemini[],
   fetchFn: typeof fetch = fetch,
+  attendre?: Attente,
 ): Promise<string> {
-  const json = await appelerGemini(apiKey, { system_instruction: { parts: [{ text: systeme }] }, contents: historique }, fetchFn);
+  const json = await appelerGemini(apiKey, { system_instruction: { parts: [{ text: systeme }] }, contents: historique }, fetchFn, attendre);
   const candidat = json?.candidates?.[0];
   if (!candidat) throw new ErreurAnalyse('Réponse vide, réessaie.');
   const texte: string = (candidat.content?.parts ?? []).map((p: any) => p.text ?? '').join('').trim();
