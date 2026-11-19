@@ -55,8 +55,38 @@ test('modèle introuvable (404) → essaie le suivant', async () => {
   assert.ok(appels[1].url.includes(MODELES_GEMINI[1]));
 });
 
-test('quota atteint (429) → message quota', async () => {
-  const { f } = fauxFetch([429]);
+const sansAttente = async () => {};
+
+test('surcharge passagère (503) → réessaie le même modèle puis réussit', async () => {
+  const { f, appels } = fauxFetch([503, 200]);
+  const attentes: number[] = [];
+  await analyserGemini('k', [premierTourGemini('AAAA', 'x')], f, async (ms) => { attentes.push(ms); });
+  assert.equal(appels.length, 2);
+  assert.ok(appels[1].url.includes(MODELES_GEMINI[0]));
+  assert.deepEqual(attentes, [2000]);
+});
+
+test('modèle surchargé (503 répétés) → passe au modèle suivant', async () => {
+  const { f, appels } = fauxFetch([503, 503, 200]);
+  await analyserGemini('k', [premierTourGemini('AAAA', 'x')], f, sansAttente);
+  assert.equal(appels.length, 3);
+  assert.ok(appels[2].url.includes(MODELES_GEMINI[1]));
+});
+
+test('tous les modèles surchargés → message clair', async () => {
+  const { f, appels } = fauxFetch(Array(20).fill(503));
+  await assert.rejects(analyserGemini('k', [premierTourGemini('AAAA', 'x')], f, sansAttente), /surchargé/);
+  assert.equal(appels.length, MODELES_GEMINI.length * 2);
+});
+
+test('quota d’un modèle atteint (429) → essaie le suivant', async () => {
+  const { f, appels } = fauxFetch([429, 200]);
+  await analyserGemini('k', [premierTourGemini('AAAA', 'x')], f, sansAttente);
+  assert.equal(appels.length, 2);
+});
+
+test('quota atteint (429) partout → message quota', async () => {
+  const { f } = fauxFetch(Array(10).fill(429));
   await assert.rejects(analyserGemini('k', [premierTourGemini('AAAA', 'x')], f), /Quota/);
 });
 
