@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 // Estimation d'un repas par l'IA, à partir d'une photo ou d'une description :
 // analyse → questions si doute → correction des portions → validation.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, View } from 'react-native';
 
 import { Bouton, C, Carte, Champ, Texte } from '@/components/ui';
@@ -32,7 +32,11 @@ export function EstimationRepas({ mode, onValider }: { mode: 'photo' | 'texte'; 
   const [tours, setTours] = useState(0);
   const [reponses, setReponses] = useState<Record<string, string>>({});
 
+  // Dernier appel lancé, pour pouvoir réessayer sans reprendre la photo.
+  const dernier = useRef<(() => Promise<void>) | null>(null);
+
   const lancer = async (appel: () => Promise<{ analyse: AnalysePhoto; session: Session }>, toursFaits: number) => {
+    dernier.current = () => lancer(appel, toursFaits);
     setEtape({ nom: 'analyse' });
     try {
       const { analyse, session: s } = await appel();
@@ -73,6 +77,7 @@ export function EstimationRepas({ mode, onValider }: { mode: 'photo' | 'texte'; 
     setTexte('');
     setSession(null);
     setTours(0);
+    dernier.current = null;
   };
 
   const majAliments = (analyse: AnalysePhoto, aliments: AnalysePhoto['aliments']) =>
@@ -142,6 +147,9 @@ export function EstimationRepas({ mode, onValider }: { mode: 'photo' | 'texte'; 
           <Texte couleur={C.danger}>{etape.message}</Texte>
           {/clé/i.test(etape.message) && (
             <Bouton titre="Aller au Profil pour ajouter la clé" onPress={() => router.navigate({ pathname: '/profil', params: { cle: '1' } })} />
+          )}
+          {dernier.current && !/clé/i.test(etape.message) && (
+            <Bouton titre={image ? 'Réessayer avec la même photo' : 'Réessayer'} onPress={() => dernier.current?.()} />
           )}
           <Bouton titre="Recommencer" secondaire onPress={reinitialiser} />
         </>
