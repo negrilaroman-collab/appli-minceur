@@ -6,6 +6,7 @@ import { BilanSemaine } from '@/components/bilan-semaine';
 import { CarteActivite } from '@/components/activite';
 import { CarteBoissons } from '@/components/boissons';
 import { CourbePoids } from '@/components/courbe-poids';
+import { BandeauMiseAJour } from '@/components/mise-a-jour';
 import { Anneau, Barre, Bouton, C, Carte, Champ, Ecran, Texte } from '@/components/ui';
 import { moyenne7Jours, objectifMacros } from '@/lib/nutrition';
 import { aujourdhui, cleSeance, useStore } from '@/lib/store';
@@ -76,6 +77,7 @@ export default function AujourdhuiScreen() {
 
   return (
     <Ecran titre="Aujourd'hui" sousTitre={dateLongue()}>
+      <BandeauMiseAJour />
       {serie >= 2 && (
         <View style={{ alignSelf: 'flex-start', flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: C.backgroundElement, borderColor: C.orange, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
           <Texte type="gras" couleur={C.orange}>
