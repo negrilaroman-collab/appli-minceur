@@ -17,6 +17,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      # Numéro de version : augmente à chaque build. L'appli le compare à version.json
+      # pour proposer « Nouvelle version disponible ».
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,7 +59,10 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
 
       - name: Renommer l'APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk appli-minceur.apk
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk appli-minceur.apk
+          echo "{\"versionCode\": ${ANDROID_VERSION_CODE}, \"date\": \"$(date -u +%Y-%m-%dT%H:%MZ)\"}" > version.json
+          cat version.json
 
       - uses: actions/upload-artifact@v4
         with:
@@ -67,7 +74,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete apk --yes --cleanup-tag || true
-          gh release create apk appli-minceur.apk \
+          gh release create apk appli-minceur.apk version.json \
             --title "Appli Minceur (dernière version)" \
             --notes "APK construit depuis ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). Ouvre ce fichier sur ton téléphone Android pour l'installer." \
             --prerelease --target "$GITHUB_SHA"
