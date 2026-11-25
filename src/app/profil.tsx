@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { CarteCleGemini } from '@/components/cle-gemini';
@@ -19,6 +19,9 @@ import { aujourdhui, useStore, type ProfilComplet } from '@/lib/store';
 import type { Lieu, Niveau } from '@/lib/training';
 
 const nombre = (s: string) => Number(s.replace(',', '.'));
+
+const LIEN_CONFIDENTIALITE =
+  'https://github.com/negrilaroman-collab/appli-minceur/blob/photo-kcal/docs/politique-confidentialite.md';
 
 export default function ProfilScreen() {
   const { profil, enregistrerProfil, ajouterPesee } = useStore();
@@ -173,6 +176,9 @@ export default function ProfilScreen() {
       {!cleEnHaut && <CarteCleGemini />}
       <ThemedText type="small" themeColor="textSecondary">
         Conseils généraux, ne remplace pas un avis médical. En cas de maladie, grossesse ou troubles alimentaires, demande l'avis d'un professionnel.
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" onPress={() => Linking.openURL(LIEN_CONFIDENTIALITE)}>
+        Politique de confidentialité ›
       </ThemedText>
     </Ecran>
   );
