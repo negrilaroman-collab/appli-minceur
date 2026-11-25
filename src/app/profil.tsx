@@ -1,8 +1,9 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { CarteCleGemini } from '@/components/cle-gemini';
 import { Bouton, Carte, Champ, Choix, Ecran } from '@/components/ui';
 import {
   LIBELLES_ACTIVITE,
@@ -21,6 +22,8 @@ const nombre = (s: string) => Number(s.replace(',', '.'));
 
 export default function ProfilScreen() {
   const { profil, enregistrerProfil, ajouterPesee } = useStore();
+  // Venu d'un message « ajoute ta clé » : la carte de la clé passe en premier.
+  const cleEnHaut = useLocalSearchParams<{ cle?: string }>().cle === '1';
   const [sexe, setSexe] = useState<Sexe>(profil?.sexe ?? 'homme');
   const [age, setAge] = useState(String(profil?.age ?? ''));
   const [taille, setTaille] = useState(String(profil?.tailleCm ?? ''));
@@ -32,6 +35,20 @@ export default function ProfilScreen() {
   const [lieu, setLieu] = useState<Lieu>(profil?.lieuSport ?? 'maison');
   const [jours, setJours] = useState(String(profil?.joursSport ?? 3));
 
+  // L'écran reste chargé entre les onglets : on recopie le profil enregistré (ex. après une pesée sur « Aujourd'hui »).
+  useEffect(() => {
+    if (!profil) return;
+    setSexe(profil.sexe);
+    setAge(String(profil.age));
+    setTaille(String(profil.tailleCm));
+    setPoids(String(profil.poidsKg));
+    setCible(String(profil.poidsCibleKg));
+    setActivite(profil.activite);
+    setRythme(profil.rythme);
+    setNiveau(profil.niveauSport);
+    setLieu(profil.lieuSport);
+    setJours(String(profil.joursSport));
+  }, [profil]);
   const brouillon: ProfilComplet = {
     sexe,
     age: nombre(age),
@@ -44,14 +61,37 @@ export default function ProfilScreen() {
     lieuSport: lieu,
     joursSport: Math.min(6, Math.max(2, nombre(jours) || 3)),
     debutProgramme: profil?.debutProgramme ?? aujourdhui(),
+    ajustementKcal: profil?.ajustementKcal,
   };
   const valide =
     brouillon.age >= 16 && brouillon.age <= 100 && brouillon.tailleCm >= 120 && brouillon.tailleCm <= 230 &&
     brouillon.poidsKg >= 35 && brouillon.poidsKg <= 300;
+  const m2 = (brouillon.tailleCm / 100) ** 2;
+  const poidsMini = Math.ceil(18.5 * m2);
+  const joursSaisis = nombre(jours);
 
   const enregistrer = () => {
     if (!valide) {
       Alert.alert('Profil incomplet', "Vérifie l'âge (16-100), la taille en cm et le poids en kg.");
+      return;
+    }
+    if (brouillon.poidsKg / m2 < 18.5) {
+      Alert.alert(
+        'Poids déjà bas',
+        "Ton poids est déjà sous le seuil de santé (IMC 18,5). L'appli n'est pas faite pour maigrir davantage : parles-en à un médecin.",
+      );
+      return;
+    }
+    if (brouillon.poidsCibleKg < poidsMini) {
+      Alert.alert('Poids visé trop bas', `Pour ta taille, vise au moins ${poidsMini} kg (IMC 18,5). En dessous, c'est mauvais pour la santé.`);
+      return;
+    }
+    if (brouillon.poidsCibleKg > brouillon.poidsKg) {
+      Alert.alert('Poids visé', "Le poids visé est plus haut que ton poids actuel : l'appli est faite pour perdre du poids.");
+      return;
+    }
+    if (!(joursSaisis >= 2 && joursSaisis <= 6)) {
+      Alert.alert('Jours de sport', 'Choisis entre 2 et 6 jours de sport par semaine.');
       return;
     }
     enregistrerProfil(brouillon);
@@ -63,6 +103,7 @@ export default function ProfilScreen() {
 
   return (
     <Ecran titre="Mon profil">
+      {cleEnHaut && <CarteCleGemini />}
       <Carte>
         <Choix libelle="Sexe" valeur={sexe} onChange={setSexe} options={[{ valeur: 'homme', texte: 'Homme' }, { valeur: 'femme', texte: 'Femme' }]} />
         <Champ libelle="Âge" keyboardType="number-pad" value={age} onChangeText={setAge} placeholder="30" />
@@ -128,6 +169,8 @@ export default function ProfilScreen() {
       )}
 
       <Bouton titre="Enregistrer" onPress={enregistrer} />
+
+      {!cleEnHaut && <CarteCleGemini />}
       <ThemedText type="small" themeColor="textSecondary">
         Conseils généraux, ne remplace pas un avis médical. En cas de maladie, grossesse ou troubles alimentaires, demande l'avis d'un professionnel.
       </ThemedText>

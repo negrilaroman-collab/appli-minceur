@@ -24,7 +24,7 @@ test('Mifflin-St Jeor : exemple de la fiche', () => {
 
 test('macros cohérentes avec les kcal', () => {
   const m = objectifMacros(roman);
-  assert.equal(m.proteinesG, 162);
+  assert.equal(m.proteinesG, 146); // 1,8 g × 81 kg (poids à IMC 25 pour 1,80 m)
   const total = m.proteinesG * 4 + m.lipidesG * 9 + m.glucidesG * 4;
   assert.ok(Math.abs(total - m.kcal) < 10);
 });
@@ -59,4 +59,25 @@ test('double progression', () => {
   assert.equal(chargeSuivante(40, [12, 12, 12], 12, 8), 41);
   assert.equal(chargeSuivante(40, [12, 10, 9], 12, 8), 40);
   assert.equal(chargeSuivante(40, [12, 12, 12], 12, 10), 38);
+});
+
+test('programme : gainage en secondes, 2 jours respectés, intermédiaire ≠ débutant, 3 jours équilibrés', () => {
+  const p2 = genererProgramme({ niveau: 'debutant', lieu: 'maison', joursParSemaine: 2 });
+  assert.ok(p2.every((s) => s.seances.length === 2));
+  const gainage = p2[0].seances[0].exercices.find((e) => e.nom === 'Gainage planche');
+  assert.match(gainage!.reps, / s$/);
+  assert.ok(!p2.some((s) => s.seances.some((x) => x.exercices.some((e) => e.nom.includes('Dips')))));
+  const deb = genererProgramme({ niveau: 'debutant', lieu: 'salle', joursParSemaine: 3 });
+  const inter = genererProgramme({ niveau: 'intermediaire', lieu: 'salle', joursParSemaine: 3 });
+  assert.notDeepEqual(deb[6], inter[6]);
+  assert.deepEqual(deb[6].seances.map((s) => s.titre), ['Bas du corps', 'Haut du corps', 'Corps entier']);
+  const maison = genererProgramme({ niveau: 'debutant', lieu: 'maison', joursParSemaine: 3 });
+  assert.ok(!maison[10].seances[0].exercices[0].reps.startsWith('6'));
+});
+
+test('ajustement des bilans : appliqué aussi en maintien', () => {
+  assert.equal(objectifKcal({ ...roman, ajustementKcal: -125 }), 2210);
+  const maintien = { ...roman, poidsCibleKg: 90 };
+  assert.equal(objectifKcal(maintien), 2914);
+  assert.equal(objectifKcal({ ...maintien, ajustementKcal: -125 }), 2790);
 });

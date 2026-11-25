@@ -7,21 +7,25 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// Thème « sombre et sportif » : identique en mode clair et sombre.
+const Sombre = {
+    text: '#F4F6F8',
+    background: '#0A0B0D',
+    backgroundElement: '#15181C',
+    backgroundSelected: '#23282F',
+    textSecondary: '#8B95A3',
+    accent: '#C6FF3D',
+    accentText: '#0A0B0D',
+    orange: '#FF7A1A',
+    cyan: '#3CCBFF',
+    jaune: '#FFC93C',
+    danger: '#FF4D5E',
+    bordure: '#262B33',
+  } as const;
+
 export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+  light: Sombre,
+  dark: Sombre,
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
